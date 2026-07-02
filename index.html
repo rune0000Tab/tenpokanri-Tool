@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>店舗業務管理システム</title>
+<title>店舗業務管理システム (Electron・exe対応版)</title>
 <!-- Firebaseの読み込み -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -76,7 +76,7 @@
   
   @media (max-width: 850px) {
     .app-layout { flex-direction: column; }
-    .sidebar { width: 100%; margin-bottom: 20px;}
+    .sidebar { width: 100%; border-bottom: 1px solid var(--border-color); margin-bottom: 20px;}
   }
 
   /* Tabs */
@@ -120,11 +120,11 @@
   button:active { transform: translateY(1px); box-shadow: none !important;}
   button:disabled { opacity: 0.6; cursor: not-allowed; }
   
-  .btn-blue { background: var(--primary); width: 100%;}
+  .btn-blue { background: var(--primary); width: 100%; font-size: 15px;}
   .btn-blue:hover { background: var(--primary-hover); }
-  .btn-green { background: var(--success); }
+  .btn-green { background: var(--success); margin-bottom: 10px; }
   .btn-green:hover { background: var(--success-hover); }
-  .btn-red { background: var(--danger); }
+  .btn-red { background: var(--danger); padding: 6px 12px; font-size: 13px; }
   .btn-red:hover { background: var(--danger-hover); }
   .btn-secondary { background: var(--secondary); color: white;}
   .btn-secondary:hover { background: var(--secondary-hover); }
@@ -169,8 +169,8 @@
 
   /* Calc Menu Grid */
   .calc-menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
-  .calc-menu-btn { border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius); text-align: center; cursor: pointer; background: var(--bg-card); transition: 0.2s; user-select: none; box-shadow: 0 1px 2px rgba(0,0,0,0.02); display: flex; flex-direction: column; align-items: center; justify-content: flex-start;}
-  .calc-menu-btn:hover { border-color: var(--primary); background: #f8fafc; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+  .calc-menu-btn { border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius); text-align: center; cursor: pointer; background: #fff; transition: 0.2s; user-select: none; box-shadow: 0 1px 2px rgba(0,0,0,0.02); display: flex; flex-direction: column; align-items: center; justify-content: flex-start;}
+  .calc-menu-btn:hover { border-color: var(--primary); background: #f8fafc; transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
   .calc-menu-btn:active { transform: translateY(0); }
   .calc-menu-btn img { width: 100%; max-width: 70px; height: 70px; object-fit: cover; border-radius: 4px; margin-bottom: 8px; border: 1px solid var(--border-color);}
   .calc-menu-title { font-size: 12px; font-weight: bold; line-height: 1.3; margin-bottom: 4px; color: var(--text-main); word-break: break-word;}
@@ -214,7 +214,6 @@
     max-width: 450px; width: 90%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
   }
   .modal-content h2 { margin-top: 0; font-size: 20px; color: var(--text-main); border-bottom: none; margin-bottom: 15px;}
-  
 </style>
 </head>
 <body>
@@ -250,6 +249,21 @@
   </div>
 </div>
 
+<!-- ★ 【Electron完全対応】汎用入力モーダル（パスワード等） -->
+<div id="customPromptModal" class="modal-overlay">
+  <div class="modal-content" style="max-width: 400px;">
+    <h2 id="customPromptTitle">入力</h2>
+    <p id="customPromptMessage" style="margin-bottom: 15px; font-size: 14px; color: var(--text-main); white-space: pre-line; text-align: left;"></p>
+    <div class="form-group">
+      <input type="text" id="customPromptInput" placeholder="" style="text-align: center; font-size: 16px;">
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button class="btn-secondary" style="flex: 1;" onclick="resolveCustomPrompt(null)">キャンセル</button>
+      <button class="btn-blue" style="flex: 1;" onclick="resolveCustomPrompt(document.getElementById('customPromptInput').value)">決定</button>
+    </div>
+  </div>
+</div>
+
 <div class="header">
   <h1>店舗業務管理システム</h1>
   <div class="store-badge" id="roomBadge" style="display:none; margin-top:10px;">
@@ -263,7 +277,7 @@
 
   <!-- 左パネル：スタッフ設定とオンライン状況 -->
   <div class="sidebar">
-    <h3 style="border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px;">🧑‍💼 スタッフ出退勤</h3>
+    <h3>🧑‍💼 スタッフ出退勤</h3>
     <div class="form-group">
       <select id="myStaffSelect" style="font-size: 14px; padding: 10px;">
         <option value="">-- スタッフを選択 --</option>
@@ -275,14 +289,14 @@
     </div>
 
     <!-- ★ 権限設定エリア -->
-    <h3 style="border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-top: 25px; margin-bottom: 15px;">🔐 権限ステータス</h3>
+    <h3 style="margin-top: 25px;">🔐 権限ステータス</h3>
     <div class="panel">
       <div id="adminStatusDisplay" style="font-weight: bold; font-size: 14px; color: var(--text-main); margin-bottom: 10px;">👤 一般スタッフ</div>
       <button id="adminToggleBtn" class="btn-secondary" style="width: 100%; font-size: 12px; padding: 8px;" onclick="toggleAdmin()">管理者として認証</button>
       <button id="adminPwdChangeBtn" class="btn-red" style="width: 100%; margin-top: 8px; font-size: 12px; padding: 6px; display: none;" onclick="changeAdminPassword()">パスワード変更</button>
     </div>
     
-    <h3 style="border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-top: 25px; margin-bottom: 15px;">🟢 勤務中のスタッフ</h3>
+    <h3 style="margin-top: 25px;">🟢 勤務中のスタッフ</h3>
     <ul id="presenceList" style="list-style:none; padding:0; margin:0;">
       <!-- オンラインのスタッフ一覧が入る -->
     </ul>
@@ -553,7 +567,39 @@
   const db = firebase.database();
 
   // ==========================================
-  // ルームIDと名前の管理
+  // ★【Electron完全対応】汎用カスタム入力モーダル
+  // ==========================================
+  // Use a global property to avoid redeclaration errors when this script
+  // is included multiple times.
+  window.customPromptCallback = window.customPromptCallback || null;
+
+  function customPrompt(title, message, defaultValue, callback) {
+    document.getElementById('customPromptTitle').innerText = title;
+    document.getElementById('customPromptMessage').innerText = message;
+    const input = document.getElementById('customPromptInput');
+    input.value = defaultValue || '';
+    window.customPromptCallback = callback;
+    
+    document.getElementById('customPromptModal').style.display = 'flex';
+    input.focus();
+  }
+
+  function resolveCustomPrompt(value) {
+    document.getElementById('customPromptModal').style.display = 'none';
+    if (window.customPromptCallback) {
+      window.customPromptCallback(value);
+      window.customPromptCallback = null;
+    }
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (document.getElementById('customPromptModal').style.display === 'flex' && e.key === 'Enter') {
+      resolveCustomPrompt(document.getElementById('customPromptInput').value);
+    }
+  });
+
+  // ==========================================
+  // 【安全版】ルームIDと名前の管理
   // ==========================================
   let roomId = null;
   let roomName = null;
@@ -634,7 +680,7 @@
   });
 
   // ==========================================
-  // モーダルと入室関連
+  // モーダルと入室関連 (Electron対応版)
   // ==========================================
   function showRoomModal() {
     document.getElementById('roomModal').style.display = 'flex';
@@ -688,16 +734,16 @@
     if (!/^[a-zA-Z0-9_-]+$/.test(idInput)) return alert('店舗IDは半角英数字で入力してください！');
     if (!nameInput) nameInput = "名称未設定の店舗"; 
     
-    // ★ Firebaseで管理者パスワードの有無をチェックし、新規なら設定させる
+    // ★ Firebaseで管理者パスワードの有無をチェックし、新規なら設定させる (Electron対応)
     db.ref('rooms/' + idInput + '/settings/adminPassword').once('value').then(snapshot => {
       const pwd = snapshot.val();
       if (!pwd) {
-        const newPwd = prompt(`【新規店舗登録】\n店舗「${nameInput}」の管理者パスワードを設定してください。\n※後から変更可能です。`);
-        if (!newPwd) return; 
-        
-        db.ref('rooms/' + idInput).update({ roomName: nameInput });
-        db.ref('rooms/' + idInput + '/settings').update({ adminPassword: newPwd }).then(() => {
-          finalizeJoinRoom(idInput, nameInput);
+        customPrompt("新規店舗の登録", `店舗「${nameInput}」の管理者パスワードを設定してください。\n※後から変更可能です。`, "", (newPwd) => {
+          if (!newPwd) return; 
+          db.ref('rooms/' + idInput).update({ roomName: nameInput });
+          db.ref('rooms/' + idInput + '/settings').update({ adminPassword: newPwd }).then(() => {
+            finalizeJoinRoom(idInput, nameInput);
+          });
         });
       } else {
         finalizeJoinRoom(idInput, nameInput);
@@ -720,7 +766,7 @@
     if(!select) return alert('削除する履歴を選んでください');
     try {
       let parsed = JSON.parse(select);
-      if(confirm(`履歴から「${parsed.name} (ID: ${parsed.id})」を削除しますか？`)) {
+      if(confirm(`履歴から「${parsed.name} (ID: ${parsed.id})」を削除しますか？\n（※クラウド上のデータ自体は消えません）`)) {
         roomHistory = roomHistory.filter(h => h.id !== parsed.id);
         localStorage.setItem('fivem_room_history', JSON.stringify(roomHistory));
         renderRoomHistory();
@@ -736,22 +782,23 @@
     if(!select) return alert('名前を変更する履歴を選んでください');
     try {
       let parsed = JSON.parse(select);
-      const newName = prompt(`「${parsed.name} (ID: ${parsed.id})」の新しい店舗名を入力してください。`, parsed.name);
-      if(!newName || newName === parsed.name) return;
-      
-      let index = roomHistory.findIndex(h => h.id === parsed.id);
-      if(index !== -1) {
-        roomHistory[index].name = newName;
-        localStorage.setItem('fivem_room_history', JSON.stringify(roomHistory));
-        renderRoomHistory();
-        if(document.getElementById('roomIdInput').value === parsed.id) document.getElementById('roomNameInput').value = newName;
-        if (parsed.id === roomId) {
-          roomName = newName;
-          document.getElementById('storeNameDisplay').innerText = `${roomName} (ID: ${roomId})`;
-          localStorage.setItem('fivem_current_room', JSON.stringify({id: roomId, name: roomName}));
-          if(dbRef) dbRef.child('roomName').set(roomName);
+      customPrompt("店舗名の変更", `「${parsed.name} (ID: ${parsed.id})」の新しい店舗名を入力してください。`, parsed.name, (newName) => {
+        if(!newName || newName === parsed.name) return;
+        
+        let index = roomHistory.findIndex(h => h.id === parsed.id);
+        if(index !== -1) {
+          roomHistory[index].name = newName;
+          localStorage.setItem('fivem_room_history', JSON.stringify(roomHistory));
+          renderRoomHistory();
+          if(document.getElementById('roomIdInput').value === parsed.id) document.getElementById('roomNameInput').value = newName;
+          if (parsed.id === roomId) {
+            roomName = newName;
+            document.getElementById('storeNameDisplay').innerText = `${roomName} (ID: ${roomId})`;
+            localStorage.setItem('fivem_current_room', JSON.stringify({id: roomId, name: roomName}));
+            if(dbRef) dbRef.child('roomName').set(roomName);
+          }
         }
-      }
+      });
     } catch(e) {}
   }
 
@@ -833,7 +880,7 @@
       renderTags(); updateTagDropdowns(); renderMaterials(); updateMaterialDropdowns();
       renderRecipes(); renderCalcMenu(); renderCart(); renderLogs(); renderTabOrderSettings();
       renderAttendance(); 
-      applyPermissions(); // ★ データの更新があった時も権限に応じたUIを維持
+      applyPermissions();
     });
 
     setupPresence();
@@ -841,7 +888,7 @@
   }
 
   // ==============================
-  // 🔐 権限（管理者モード）とマスターキー
+  // 🔐 権限（管理者モード）とマスターキー (Electron対応版)
   // ==============================
   function toggleAdmin() {
     if (isAdmin) {
@@ -851,44 +898,47 @@
       applyPermissions();
     } else {
       if (!adminPassword && masterKeys.length === 0) {
-        const newPwd = prompt("【初回設定】\n店舗の管理者用パスワードが未設定です。\n新しく設定するパスワード（英数字など）を入力してください。");
-        if (!newPwd) return;
-        dbRef.child('settings').update({ adminPassword: newPwd });
-        adminPassword = newPwd;
-        isAdmin = true;
-        adminType = 'room';
-        alert("管理者パスワードを設定し、管理者モードになりました！");
-        applyPermissions();
+        customPrompt("初回パスワード設定", "店舗の管理者用パスワードが未設定です。\n新しく設定するパスワード（英数字など）を入力してください。", "", (newPwd) => {
+          if (!newPwd) return;
+          dbRef.child('settings').update({ adminPassword: newPwd });
+          adminPassword = newPwd;
+          isAdmin = true;
+          adminType = 'room';
+          alert("管理者パスワードを設定し、管理者モードになりました！");
+          applyPermissions();
+        });
         return;
       }
 
-      const input = prompt("管理者パスワード または マスターキー を入力してください。");
-      if (input === null) return;
-      
-      if (masterKeys.includes(input)) {
-        isAdmin = true;
-        adminType = 'master';
-        alert("🔑 マスターキーで認証されました！(全権限)");
-        applyPermissions();
-      } else if (!adminPassword && input) {
-         alert("❌ この店舗は管理者パスワードが未設定です。");
-      } else if (input === adminPassword) {
-        isAdmin = true;
-        adminType = 'room';
-        alert("管理者モードになりました！");
-        applyPermissions();
-      } else {
-        alert("❌ パスワードが違います！");
-      }
+      customPrompt("管理者認証", "管理者パスワード または マスターキー を入力してください。", "", (input) => {
+        if (input === null) return;
+        
+        if (masterKeys.includes(input)) {
+          isAdmin = true;
+          adminType = 'master';
+          alert("🔑 マスターキーで認証されました！(全権限)");
+          applyPermissions();
+        } else if (!adminPassword && input) {
+           alert("❌ この店舗は管理者パスワードが未設定です。");
+        } else if (input === adminPassword) {
+          isAdmin = true;
+          adminType = 'room';
+          alert("管理者モードになりました！");
+          applyPermissions();
+        } else {
+          alert("❌ パスワードが違います！");
+        }
+      });
     }
   }
 
   function changeAdminPassword() {
     if (!isAdmin) return;
-    const newPwd = prompt("新しい管理者パスワードを入力してください。");
-    if (!newPwd) return;
-    dbRef.child('settings').update({ adminPassword: newPwd });
-    alert("管理者パスワードを変更しました！");
+    customPrompt("パスワード変更", "新しい管理者パスワードを入力してください。", "", (newPwd) => {
+      if (!newPwd) return;
+      dbRef.child('settings').update({ adminPassword: newPwd });
+      alert("管理者パスワードを変更しました！");
+    });
   }
 
   function applyPermissions() {
@@ -896,7 +946,6 @@
     const toggleBtn = document.getElementById('adminToggleBtn');
     const pwdBtn = document.getElementById('adminPwdChangeBtn');
     
-    // タブのボタン要素
     const createTabBtn = document.querySelector('.tab-btn[data-tab="tab-create"]');
     const materialsTabBtn = document.querySelector('.tab-btn[data-tab="tab-materials"]');
     const reportBtn = document.getElementById('reportBtn');
@@ -928,7 +977,6 @@
       if(resetLogsBtn) resetLogsBtn.style.display = 'none';
       if(masterKeySec) masterKeySec.style.display = 'none';
       
-      // 管理者限定タブを開いていた場合は強制移動
       const createTab = document.getElementById('tab-create');
       const materialsTab = document.getElementById('tab-materials');
       if ( (createTab && createTab.classList.contains('active')) || (materialsTab && materialsTab.classList.contains('active')) ) {
@@ -938,13 +986,12 @@
     renderRecipes(); 
   }
 
-  // ★ マスターキー管理の機能
   function renderMasterKeys() {
     const list = document.getElementById('masterKeyList');
     if(!list) return;
     list.innerHTML = '';
     if (masterKeys.length === 0) {
-      list.innerHTML = '<li><span style="color:var(--text-muted); font-size:13px;">マスターキーはまだ登録されていません。</span></li>';
+      list.innerHTML = '<li><span style="color:var(--text-muted);">マスターキーはまだ登録されていません。</span></li>';
     } else {
       masterKeys.forEach((key, index) => {
         const maskedKey = '*'.repeat(Math.max(key.length - 2, 0)) + key.slice(-2);
@@ -975,9 +1022,7 @@
   // 🟢 スタッフ出退勤とオンライン時間・出勤表
   // ==============================
   function setupPresence() {
-    if(myStaffName) {
-      document.getElementById('logStaffNameDisplay').innerText = myStaffName;
-    }
+    if(myStaffName) document.getElementById('logStaffNameDisplay').innerText = myStaffName;
 
     const amOnline = firebase.database().ref('.info/connected');
     const userRef = dbRef.child('presence/' + myUid);
@@ -1001,7 +1046,6 @@
     list.innerHTML = '';
     staffs.forEach((staff, index) => {
       const roleStr = staff.role ? ` <span style="font-size:12px; color:var(--text-muted);">(${staff.role})</span>` : '';
-      // 管理者のみスタッフ削除可能
       const delBtn = isAdmin ? `<button class="btn-red" onclick="deleteStaff(${index})">削除</button>` : '';
       list.innerHTML += `<li><span>🧑‍🍳 <strong>${staff.name}</strong>${roleStr}</span>${delBtn}</li>`;
     });
@@ -1041,10 +1085,8 @@
     localStorage.setItem('fivem_staff_name', myStaffName);
     document.getElementById('logStaffNameDisplay').innerText = myStaffName;
     
-    // オンライン状態に
     if(dbRef) dbRef.child('presence/' + myUid).update({ name: myStaffName, online: true, loginTime: Date.now(), lastSeen: firebase.database.ServerValue.TIMESTAMP });
     
-    // 出勤表(attendance)への書き込み
     const d = new Date();
     const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     const day = String(d.getDate()).padStart(2,'0');
@@ -1062,7 +1104,6 @@
     
     if(dbRef) dbRef.child('presence/' + myUid).update({ online: false, lastSeen: firebase.database.ServerValue.TIMESTAMP });
     
-    // 出勤表(attendance)への退勤書き込み
     const d = new Date();
     const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     const day = String(d.getDate()).padStart(2,'0');
@@ -1179,21 +1220,25 @@
     tbody.innerHTML = bodyHtml;
   }
 
+  // ★【Electron対応】出勤表の編集
   function editAttendance(ym, day, staffName) {
     if (!isAdmin) return alert("❌ 出退勤時間の手動変更は「管理者」のみ可能です。\n左パネルで【管理者として認証】を行ってください。");
 
     const att = attendanceData?.[ym]?.[day]?.[staffName] || {in: '', out: ''};
-    const input = prompt(`${ym}-${day} 【${staffName}】 の出退勤時間を入力してください。\nフォーマット例: 10:00 - 18:00\n（全て消して空にすると記録が削除されます）`, `${att.in||''} - ${att.out||''}`.replace(/^ - $/, ''));
-    if (input === null) return; 
+    const currentVal = `${att.in||''} - ${att.out||''}`.replace(/^ - $/, '');
     
-    if (input.trim() === '' || input.trim() === '-') {
-      dbRef.child(`attendance/${ym}/${day}/${staffName}`).remove();
-    } else {
-      const parts = input.split(/[-~～]/);
-      const inT = parts[0]?.trim() || '';
-      const outT = parts[1]?.trim() || '';
-      dbRef.child(`attendance/${ym}/${day}/${staffName}`).update({ in: inT, out: outT });
-    }
+    customPrompt("出退勤時間の修正", `${ym}-${day} 【${staffName}】 の出退勤時間を入力してください。\nフォーマット例: 10:00 - 18:00\n（全て消して空にすると記録が削除されます）`, currentVal, (input) => {
+      if (input === null) return; 
+      
+      if (input.trim() === '' || input.trim() === '-') {
+        dbRef.child(`attendance/${ym}/${day}/${staffName}`).remove();
+      } else {
+        const parts = input.split(/[-~～]/);
+        const inT = parts[0]?.trim() || '';
+        const outT = parts[1]?.trim() || '';
+        dbRef.child(`attendance/${ym}/${day}/${staffName}`).update({ in: inT, out: outT });
+      }
+    });
   }
 
   // ==============================
@@ -1330,7 +1375,7 @@
     });
 
     let reportMsg = `**📊 【${currentMonthStr} 店舗売上レポート】**\n\n`;
-    reportMsg += `💰 **合計売上金額: $${monthlySales.toLocaleString()}**\n\n`;
+    reportMsg += `💰 **合計売上: $${monthlySales.toLocaleString()}**\n\n`;
     reportMsg += `**📦 販売商品内訳:**\n`;
     
     const sortedItems = Object.entries(itemsSold).sort((a,b) => b[1] - a[1]);
@@ -1406,7 +1451,6 @@
         </li>
       `;
     });
-    list.scrollTop = list.scrollHeight;
   }
 
   // ==============================
@@ -1579,7 +1623,7 @@
   }
 
   function getMaterialOptionsHtml(selectedMatName = '') {
-    let html = '<option value="">-- 食材を選択 --</option>';
+    let html = '<option value="">-- 食材を選ぶ --</option>';
     materials.forEach(mat => { html += `<option value="${mat.name}" ${mat.name === selectedMatName ? 'selected' : ''}>${mat.name} (重さ:${formatWeight(mat.weight)})</option>`; });
     return html;
   }
@@ -1644,7 +1688,6 @@
 
     targetRecipes.forEach(recipe => {
       const realIndex = recipes.indexOf(recipe); const imgUrl = recipe.image ? recipe.image : 'https://via.placeholder.com/90?text=No+Img';
-      
       container.innerHTML += `
         <div class="calc-menu-btn" onclick="addToCart(${realIndex})">
           <img src="${imgUrl}" alt="画像">
@@ -1729,10 +1772,9 @@
 
     totalWeightEl.innerText = formatWeight(totalWeight);
     
-    // ★ 合計金額の半額表示対応
     if (isHalfPrice) {
       const halfPrice = Math.floor(totalPrice / 2);
-      totalPriceEl.innerHTML = `<span style="text-decoration: line-through; font-size:16px; color:var(--text-muted);">$${totalPrice.toLocaleString()}</span><br><span style="color:var(--danger); font-size:24px;">$${halfPrice.toLocaleString()}</span>`;
+      totalPriceEl.innerHTML = `<span style="text-decoration: line-through; font-size:14px; color:var(--text-muted);">$${totalPrice.toLocaleString()}</span><br><span style="color:var(--danger); font-size:24px;">$${halfPrice.toLocaleString()}</span>`;
     } else {
       totalPriceEl.innerText = '$' + totalPrice.toLocaleString(); 
     }
@@ -1746,6 +1788,179 @@
     }
     totalMaterialsEl.innerHTML += `<li style="margin-top: 10px; border-top: 1px dashed var(--border-color); padding-top: 10px; list-style: none; margin-left: -20px; color:var(--primary); font-weight:700; font-size:14px;">⚖️ 総重量: ${formatWeight(totalMatWeight)}</li>`;
   }
+</script>
+
+<!-- ★ 【Electron完全対応】汎用入力モーダル（パスワード等） -->
+<div id="customPromptModal" class="modal-overlay">
+  <div class="modal-content" style="max-width: 400px;">
+    <h2 id="customPromptTitle">入力</h2>
+    <p id="customPromptMessage" style="margin-bottom: 15px; font-size: 14px; color: var(--text-main); white-space: pre-line; text-align: left;"></p>
+    <div class="form-group">
+      <input type="text" id="customPromptInput" placeholder="" style="text-align: center; font-size: 16px;">
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button class="btn-secondary" style="flex: 1;" onclick="resolveCustomPrompt(null)">キャンセル</button>
+      <button class="btn-blue" style="flex: 1;" onclick="resolveCustomPrompt(document.getElementById('customPromptInput').value)">決定</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ==========================================
+  // ★ Electron (.exe) 専用の入力モーダル機能
+  // ==========================================
+  let customPromptCallback = null;
+
+  function customPrompt(title, message, defaultValue, callback) {
+    document.getElementById('customPromptTitle').innerText = title;
+    document.getElementById('customPromptMessage').innerText = message;
+    const input = document.getElementById('customPromptInput');
+    input.value = defaultValue || '';
+    customPromptCallback = callback;
+    
+    document.getElementById('customPromptModal').style.display = 'flex';
+    input.focus();
+  }
+
+  function resolveCustomPrompt(value) {
+    document.getElementById('customPromptModal').style.display = 'none';
+    if (customPromptCallback) {
+      customPromptCallback(value);
+      customPromptCallback = null;
+    }
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (document.getElementById('customPromptModal').style.display === 'flex' && e.key === 'Enter') {
+      resolveCustomPrompt(document.getElementById('customPromptInput').value);
+    }
+  });
+
+  // ==========================================
+  // ★ 上書き：prompt() をすべてカスタムモーダルへ置き換え
+  // ==========================================
+  // ① ルーム新規作成時のパスワード設定
+  window.joinRoom = function() {
+    let idInput = document.getElementById('roomIdInput').value.trim();
+    let nameInput = document.getElementById('roomNameInput').value.trim();
+    if (!idInput) return alert('店舗IDを入力してください！');
+    if (!/^[a-zA-Z0-9_-]+$/.test(idInput)) return alert('店舗IDは半角英数字で入力してください！');
+    if (!nameInput) nameInput = "名称未設定の店舗"; 
+    
+    db.ref('rooms/' + idInput + '/settings/adminPassword').once('value').then(snapshot => {
+      const pwd = snapshot.val();
+      if (!pwd) {
+        customPrompt("新規店舗登録", `店舗「${nameInput}」の管理者パスワードを設定してください。\n※後から変更可能です。`, "", (newPwd) => {
+          if (!newPwd) return;
+          db.ref('rooms/' + idInput).update({ roomName: nameInput });
+          db.ref('rooms/' + idInput + '/settings').update({ adminPassword: newPwd }).then(() => {
+            finalizeJoinRoom(idInput, nameInput);
+          });
+        });
+      } else {
+        finalizeJoinRoom(idInput, nameInput);
+      }
+    }).catch(e => alert("通信エラー: " + e.message));
+  };
+
+  // ② 履歴名の変更
+  window.editHistory = function() {
+    const select = document.getElementById('historySelect').value;
+    if(!select) return alert('名前を変更する履歴を選んでください');
+    try {
+      let parsed = JSON.parse(select);
+      customPrompt("店舗名の変更", `「${parsed.name} (ID: ${parsed.id})」の新しい店舗名を入力してください。`, parsed.name, (newName) => {
+        if(!newName || newName === parsed.name) return;
+        
+        let index = roomHistory.findIndex(h => h.id === parsed.id);
+        if(index !== -1) {
+          roomHistory[index].name = newName;
+          localStorage.setItem('fivem_room_history', JSON.stringify(roomHistory));
+          renderRoomHistory();
+          if(document.getElementById('roomIdInput').value === parsed.id) document.getElementById('roomNameInput').value = newName;
+          if (parsed.id === roomId) {
+            roomName = newName;
+            document.getElementById('storeNameDisplay').innerText = `${roomName} (ID: ${roomId})`;
+            localStorage.setItem('fivem_current_room', JSON.stringify({id: roomId, name: roomName}));
+            if(dbRef) dbRef.child('roomName').set(roomName);
+          }
+        }
+      });
+    } catch(e) {}
+  };
+
+  // ③ 管理者ログイン認証
+  window.toggleAdmin = function() {
+    if (isAdmin) {
+      isAdmin = false;
+      adminType = null;
+      alert("一般スタッフモードに戻りました。");
+      applyPermissions();
+    } else {
+      if (!adminPassword && masterKeys.length === 0) {
+        customPrompt("初回パスワード設定", "店舗の管理者用パスワードが未設定です。\n新しく設定するパスワード（英数字など）を入力してください。", "", (newPwd) => {
+          if (!newPwd) return;
+          dbRef.child('settings').update({ adminPassword: newPwd });
+          adminPassword = newPwd;
+          isAdmin = true;
+          adminType = 'room';
+          alert("管理者パスワードを設定し、管理者モードになりました！");
+          applyPermissions();
+        });
+        return;
+      }
+
+      customPrompt("管理者認証", "管理者パスワード または マスターキー を入力してください。", "", (input) => {
+        if (input === null) return;
+        if (masterKeys.includes(input)) {
+          isAdmin = true;
+          adminType = 'master';
+          alert("🔑 マスターキーで認証されました！(全権限)");
+          applyPermissions();
+        } else if (!adminPassword && input) {
+           alert("❌ この店舗は管理者パスワードが未設定です。");
+        } else if (input === adminPassword) {
+          isAdmin = true;
+          adminType = 'room';
+          alert("管理者モードになりました！");
+          applyPermissions();
+        } else {
+          alert("❌ パスワードが違います！");
+        }
+      });
+    }
+  };
+
+  // ④ 管理者パスワード変更
+  window.changeAdminPassword = function() {
+    if (!isAdmin) return;
+    customPrompt("パスワード変更", "新しい管理者パスワードを入力してください。", "", (newPwd) => {
+      if (!newPwd) return;
+      dbRef.child('settings').update({ adminPassword: newPwd });
+      alert("管理者パスワードを変更しました！");
+    });
+  };
+
+  // ⑤ 出退勤時間の編集
+  window.editAttendance = function(ym, day, staffName) {
+    if (!isAdmin) return alert("❌ 出退勤時間の手動変更は「管理者」のみ可能です。\n左パネルで【管理者モードへ】をクリックし認証してください。");
+
+    const att = attendanceData?.[ym]?.[day]?.[staffName] || {in: '', out: ''};
+    const currentVal = `${att.in||''} - ${att.out||''}`.replace(/^ - $/, '');
+    
+    customPrompt("出退勤時間の編集", `${ym}-${day} 【${staffName}】 の出退勤時間を入力してください。\nフォーマット例: 10:00 - 18:00\n（全て消して空にすると記録が削除されます）`, currentVal, (input) => {
+      if (input === null) return; 
+      
+      if (input.trim() === '' || input.trim() === '-') {
+        dbRef.child(`attendance/${ym}/${day}/${staffName}`).remove();
+      } else {
+        const parts = input.split(/[-~～]/);
+        const inT = parts[0]?.trim() || '';
+        const outT = parts[1]?.trim() || '';
+        dbRef.child(`attendance/${ym}/${day}/${staffName}`).update({ in: inT, out: outT });
+      }
+    });
+  };
 </script>
 
 </body>
