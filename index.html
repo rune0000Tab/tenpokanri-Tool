@@ -1,0 +1,1752 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>店舗業務管理システム</title>
+<!-- Firebaseの読み込み -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<style>
+  :root {
+    --primary: #1A73E8; 
+    --primary-hover: #1557b0;
+    --secondary: #6c757d;
+    --secondary-hover: #5a6268;
+    --success: #28a745;
+    --success-hover: #218838;
+    --danger: #dc3545;
+    --danger-hover: #c82333;
+    
+    --bg-main: #f4f6f9;
+    --bg-card: #ffffff;
+    --text-main: #333333;
+    --text-muted: #6c757d;
+    --border-color: #dee2e6;
+    
+    --radius: 6px;
+  }
+
+  body { 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    margin: 0; padding: 0 0 40px 0; 
+    background-color: var(--bg-main); 
+    color: var(--text-main); 
+  }
+
+  /* Header */
+  .header { 
+    background-color: #ffffff;
+    color: var(--text-main);
+    padding: 20px 20px; 
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin-bottom: 30px; 
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .header h1 { margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 1px; color: var(--text-main); text-shadow: none; }
+
+  /* Store Badge */
+  .store-badge {
+    display: inline-block; background: var(--bg-main); color: var(--text-muted);
+    padding: 4px 12px; border-radius: 20px; font-size: 14px; margin-bottom: 10px;
+    border: 1px solid var(--border-color); font-weight: normal;
+  }
+  .room-change-btn {
+    margin-left: 10px; padding: 4px 10px; font-size: 12px; font-weight: bold;
+    background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border-color); 
+    border-radius: 4px; cursor: pointer; transition: 0.2s; box-shadow: none;
+  }
+  .room-change-btn:hover { background: var(--bg-main); color: var(--text-main); }
+
+  /* Layout */
+  .app-layout { 
+    max-width: 1400px; margin: auto; padding: 0 15px; 
+    display: flex; gap: 20px; align-items: flex-start;
+  }
+  .sidebar { 
+    width: 250px; background: var(--bg-card); border: 1px solid var(--border-color); 
+    border-radius: var(--radius); padding: 20px; box-sizing: border-box; flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .main-content { flex: 1; min-width: 0; }
+  
+  @media (max-width: 850px) {
+    .app-layout { flex-direction: column; }
+    .sidebar { width: 100%; margin-bottom: 20px;}
+  }
+
+  /* Tabs */
+  .tab-container { display: flex; border-bottom: 2px solid var(--border-color); gap: 2px; flex-wrap: wrap; margin-bottom: 0;}
+  .tab-btn { 
+    background: transparent; border: 1px solid transparent; border-bottom: none;
+    padding: 12px 20px; font-size: 14px; cursor: pointer; border-radius: var(--radius) var(--radius) 0 0; 
+    margin-bottom: 0px; color: var(--text-muted); outline: none; transition: 0.2s; font-weight: bold;
+  }
+  .tab-btn:hover { color: var(--text-main); background: #f1f5f9; }
+  .tab-btn.active { 
+    background: var(--bg-card); color: var(--primary); 
+    border: 1px solid var(--border-color); border-bottom: 2px solid var(--bg-card); 
+    margin-bottom: -2px; z-index: 1; font-weight: bold;
+  }
+
+  .tab-content { 
+    display: none; background: var(--bg-card); padding: 25px; border: 1px solid var(--border-color); 
+    border-top: none; border-radius: 0 0 var(--radius) var(--radius); box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
+  }
+  .tab-content.active { display: block; }
+
+  /* Typography & Forms */
+  h2 { margin-top: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; font-size: 18px; color: var(--text-main); font-weight: bold;}
+  h3 { color: var(--text-main); margin-top: 0; font-size: 16px; font-weight: bold; }
+  .form-group { margin-bottom: 15px; }
+  label { display: block; font-weight: bold; margin-bottom: 6px; font-size: 13px; color: var(--text-main);}
+  
+  input[type="text"], input[type="number"], select { 
+    width: 100%; padding: 10px 12px; box-sizing: border-box; border: 1px solid var(--border-color); 
+    border-radius: 4px; font-size: 14px; color: var(--text-main); transition: 0.2s; background: #fff;
+  }
+  input[type="text"]:focus, input[type="number"]:focus, select:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 2px rgba(26,115,232,0.2); }
+  
+  /* Buttons */
+  button { 
+    padding: 10px 16px; color: white; border: none; border-radius: 4px; cursor: pointer; 
+    font-weight: bold; font-size: 14px; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  }
+  button:active { transform: translateY(1px); box-shadow: none !important;}
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
+  
+  .btn-blue { background: var(--primary); width: 100%;}
+  .btn-blue:hover { background: var(--primary-hover); }
+  .btn-green { background: var(--success); }
+  .btn-green:hover { background: var(--success-hover); }
+  .btn-red { background: var(--danger); }
+  .btn-red:hover { background: var(--danger-hover); }
+  .btn-secondary { background: var(--secondary); color: white;}
+  .btn-secondary:hover { background: var(--secondary-hover); }
+
+  /* Utility */
+  .flex-row { display: flex; gap: 20px; flex-wrap: wrap; }
+  .flex-col { flex: 1 1 300px; }
+  .panel { background: #f8fafc; border: 1px solid var(--border-color); padding: 15px; border-radius: var(--radius); text-align: center; }
+
+  /* Lists */
+  .mat-list { list-style: none; padding: 0; margin: 0; max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px; }
+  .mat-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; border-bottom: 1px solid var(--border-color); font-size: 14px; }
+  .mat-list li:last-child { border-bottom: none; }
+  .mat-list li:nth-child(even) { background: #f8fafc; }
+  
+  .material-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .material-row select { flex: 2; }
+  .material-row input { flex: 1; }
+
+  .filter-bar { background: var(--bg-main); padding: 12px 15px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 14px;}
+  .filter-bar select { border-color: var(--border-color); background: white; width: auto;}
+  
+  .tag-badge { display: inline-block; background: var(--secondary); color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-right: 4px; margin-bottom: 4px;}
+  .tag-checkbox-label { display: inline-block; background: #fff; border: 1px solid var(--border-color); padding: 6px 14px; border-radius: 20px; margin-right: 8px; margin-bottom: 8px; cursor: pointer; font-size: 13px; font-weight: bold; user-select: none; transition: 0.2s;}
+  .tag-checkbox-label:hover { border-color: var(--primary); background: #f0fdf4;}
+  .tag-checkbox-label input { margin-right: 6px; cursor: pointer; }
+
+  /* Recipes Grid */
+  #recipesList { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+  .item-card { 
+    border: 1px solid var(--border-color); padding: 15px; border-radius: var(--radius); margin-bottom: 0; 
+    display: flex; flex-direction: column; align-items: flex-start; background: #FFF; 
+    transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: left;
+  }
+  .item-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1);}
+  .item-image { width: 100%; height: 160px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); background: #f8fafc; margin-bottom: 12px;}
+  .item-details { width: 100%; flex: 1; display: flex; flex-direction: column;}
+  .item-details h3 { margin: 0 0 8px 0; font-size: 18px; color: var(--text-main); font-weight: bold; border-bottom: none;}
+  .info-text { font-size: 13px; color: var(--text-muted); margin-bottom: 4px; font-weight: bold; }
+  .recipe-mats { margin: 8px 0 15px 0; padding-left: 20px; font-size: 13px; color: var(--text-main); }
+  .item-actions { margin-top: auto; display: flex; gap: 8px; width: 100%; }
+
+  /* Calc Menu Grid */
+  .calc-menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .calc-menu-btn { border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius); text-align: center; cursor: pointer; background: var(--bg-card); transition: 0.2s; user-select: none; box-shadow: 0 1px 2px rgba(0,0,0,0.02); display: flex; flex-direction: column; align-items: center; justify-content: flex-start;}
+  .calc-menu-btn:hover { border-color: var(--primary); background: #f8fafc; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+  .calc-menu-btn:active { transform: translateY(0); }
+  .calc-menu-btn img { width: 100%; max-width: 70px; height: 70px; object-fit: cover; border-radius: 4px; margin-bottom: 8px; border: 1px solid var(--border-color);}
+  .calc-menu-title { font-size: 12px; font-weight: bold; line-height: 1.3; margin-bottom: 4px; color: var(--text-main); word-break: break-word;}
+  .calc-menu-weight { font-size: 11px; color: var(--text-muted); font-weight: bold; margin-top: auto;}
+
+  /* Cart List */
+  .cart-list { list-style: none; padding: 0; margin: 0 0 15px 0; max-height: 400px; overflow-y: auto; }
+  .cart-list li { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #fff; border: 1px solid var(--border-color); border-radius: 4px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+  .cart-list-title { font-weight: bold; font-size: 14px; color: var(--text-main);}
+  .cart-controls { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 4px;}
+  .cart-qty-btn { padding: 4px 12px; font-size: 16px; border-radius: 4px; width:auto; }
+  .cart-qty-input { width: 50px !important; text-align: center; font-size: 14px !important; font-weight: bold !important; padding: 4px !important; margin: 0 5px; border: 1px solid var(--border-color) !important; border-radius: 4px !important; }
+
+  /* Attendance Table */
+  .attendance-table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: center; background: white; margin-top: 15px; border-radius: var(--radius); box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid var(--border-color); }
+  .attendance-table th { background: var(--bg-main); padding: 12px 8px; color: var(--text-main); white-space: nowrap; border-bottom: 2px solid var(--border-color); font-size:13px; border-right: 1px solid var(--border-color);}
+  .attendance-table th:last-child { border-right: none; }
+  .attendance-table td { padding: 6px 8px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); white-space: nowrap; font-size: 12px; font-weight:bold; color:var(--text-main); vertical-align: middle;}
+  .attendance-table td:last-child { border-right: none; }
+  .attendance-table tr:last-child td { border-bottom: none; }
+  
+  .attendance-table .day-col { font-weight: bold; background: #f8fafc; border-right: 2px solid var(--border-color); width: 60px; position: sticky; left: 0; z-index: 10; }
+  .attendance-table th.day-col { background: var(--bg-main); z-index: 11; }
+  .attendance-table tr.sat .day-col { background: #e0f2fe; color: #1d4ed8; }
+  .attendance-table tr.sun .day-col { background: #fee2e2; color: #b91c1c; }
+  .attendance-table tr.sat td:not(.day-col) { background: rgba(224, 242, 254, 0.3); }
+  .attendance-table tr.sun td:not(.day-col) { background: rgba(254, 226, 226, 0.3); }
+
+  .att-cell { cursor: pointer; transition: 0.1s;}
+  .att-cell:hover { background: #fef9c3 !important; position: relative; z-index: 1; }
+
+  #syncStatus { text-align: center; padding: 8px; font-weight: bold; font-size: 13px; color: #065f46; background: #d1fae5; border: 1px solid #34d399; border-radius: 4px; margin-bottom: 15px; display: none; }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); 
+    z-index: 9999; display: none; justify-content: center; align-items: center; backdrop-filter: blur(3px);
+  }
+  .modal-content {
+    background: var(--bg-card); padding: 30px; border-radius: 8px; border: 1px solid var(--border-color);
+    max-width: 450px; width: 90%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  }
+  .modal-content h2 { margin-top: 0; font-size: 20px; color: var(--text-main); border-bottom: none; margin-bottom: 15px;}
+  
+</style>
+</head>
+<body>
+
+<!-- 🚪 ルーム入室・作成モーダル -->
+<div id="roomModal" class="modal-overlay">
+  <div class="modal-content">
+    <h2>🚪 業務システムにログイン</h2>
+    <div class="panel" style="margin-bottom: 20px; text-align: left;">
+      <div class="form-group">
+        <label>最近使った店舗</label>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <select id="historySelect" style="flex: 1; padding: 10px; margin: 0;" onchange="selectHistory(this.value)"></select>
+          <button class="btn-secondary" style="width: auto; padding: 10px;" onclick="editHistory()" title="履歴の名前を変更">✏️</button>
+          <button class="btn-red" style="width: auto; padding: 10px;" onclick="deleteHistory()" title="履歴から削除">🗑️</button>
+        </div>
+      </div>
+      <div style="text-align: center; color: var(--text-muted); font-weight: bold; margin-bottom: 15px; font-size:13px;">または</div>
+      <div class="form-group" style="margin-bottom: 15px;">
+        <label>店舗ID (半角英数字)</label>
+        <input type="text" id="roomIdInput" placeholder="例: 123456" style="text-align: center;">
+      </div>
+      <div class="form-group" style="margin-bottom: 0;">
+        <label>店舗名</label>
+        <input type="text" id="roomNameInput" placeholder="例: ハンバーガーショップ" style="text-align: center;" onkeydown="if(event.key==='Enter') joinRoom()">
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px; text-align: center;">※新しいIDを入力すると店舗が新規作成されます。</div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button id="modalCancelBtn" class="btn-secondary" style="padding: 12px 20px; display: none;" onclick="document.getElementById('roomModal').style.display='none'">キャンセル</button>
+      <button class="btn-blue" style="flex: 1; padding: 12px;" onclick="joinRoom()">ログイン</button>
+    </div>
+  </div>
+</div>
+
+<div class="header">
+  <h1>店舗業務管理システム</h1>
+  <div class="store-badge" id="roomBadge" style="display:none; margin-top:10px;">
+    📍 <span id="storeNameDisplay">---</span>
+    <button class="room-change-btn" onclick="changeRoom()">店舗変更</button>
+  </div>
+</div>
+
+<!-- ★ 全体レイアウト（サイドバー + メインエリア） -->
+<div class="app-layout" id="mainContainer" style="display:none;">
+
+  <!-- 左パネル：スタッフ設定とオンライン状況 -->
+  <div class="sidebar">
+    <h3 style="border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px;">🧑‍💼 スタッフ出退勤</h3>
+    <div class="form-group">
+      <select id="myStaffSelect" style="font-size: 14px; padding: 10px;">
+        <option value="">-- スタッフを選択 --</option>
+      </select>
+    </div>
+    <div style="display: flex; gap: 5px;">
+      <button class="btn-blue" style="flex:1; padding: 8px;" onclick="setMyName()">出勤</button>
+      <button class="btn-secondary" style="flex:1; padding: 8px;" onclick="clockOut()">退勤</button>
+    </div>
+
+    <!-- ★ 権限設定エリア -->
+    <h3 style="border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-top: 25px; margin-bottom: 15px;">🔐 権限ステータス</h3>
+    <div class="panel">
+      <div id="adminStatusDisplay" style="font-weight: bold; font-size: 14px; color: var(--text-main); margin-bottom: 10px;">👤 一般スタッフ</div>
+      <button id="adminToggleBtn" class="btn-secondary" style="width: 100%; font-size: 12px; padding: 8px;" onclick="toggleAdmin()">管理者として認証</button>
+      <button id="adminPwdChangeBtn" class="btn-red" style="width: 100%; margin-top: 8px; font-size: 12px; padding: 6px; display: none;" onclick="changeAdminPassword()">パスワード変更</button>
+    </div>
+    
+    <h3 style="border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-top: 25px; margin-bottom: 15px;">🟢 勤務中のスタッフ</h3>
+    <ul id="presenceList" style="list-style:none; padding:0; margin:0;">
+      <!-- オンラインのスタッフ一覧が入る -->
+    </ul>
+  </div>
+
+  <!-- メインコンテンツ（右側） -->
+  <div class="main-content">
+    <div id="syncStatus">✅ データベース同期中</div>
+
+    <!-- タブボタン -->
+    <div class="tab-container" id="tabButtonContainer">
+      <!-- JavaScriptで動的に並び替えて配置されます -->
+    </div>
+
+    <!-- 【画面1】 🛒 オーダー作成(計算) -->
+    <div id="tab-calc" class="tab-content active">
+      <div class="flex-row">
+        <div class="flex-col" style="flex: 2.5;">
+          <div class="filter-bar">
+            <span>🏷️ カテゴリー：</span>
+            <select id="calcFilterTag" onchange="renderCalcMenu()"><option value="">すべてのメニュー</option></select>
+          </div>
+          <div id="calcMenuList" class="calc-menu-grid"></div>
+        </div>
+        <div class="flex-col" style="flex: 1.5; background: #f8fafc; padding: 20px; border-radius: var(--radius); border: 1px solid var(--border-color);">
+          <h2 style="font-size:16px;">📋 オーダーシート</h2>
+          <ul id="cartList" class="cart-list"></ul>
+          
+          <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <div style="flex: 1; background: white; padding: 12px; border-radius: 4px; border: 1px solid var(--border-color); text-align: center;">
+              <div style="font-size: 13px; color: var(--text-muted); font-weight: bold;">💰 合計金額</div>
+              <div style="font-size: 20px; font-weight: bold; color: var(--text-main);" id="cartTotalPrice">$0</div>
+            </div>
+            <div style="flex: 1; background: white; padding: 12px; border-radius: 4px; border: 1px solid var(--border-color); text-align: center;">
+              <div style="font-size: 13px; color: var(--text-muted); font-weight: bold;">📦 総重量</div>
+              <div style="font-size: 20px; font-weight: bold; color: var(--text-main);" id="cartTotalWeight">0g</div>
+            </div>
+          </div>
+          
+          <!-- 半額券ボタン -->
+          <div style="text-align: right; margin-bottom: 15px;">
+            <button id="halfPriceBtn" class="btn-secondary" style="width: auto; font-size: 13px; padding: 6px 12px;" onclick="toggleHalfPrice()">🎫 半額適用 (OFF)</button>
+          </div>
+
+          <div style="border-top: 1px dashed var(--border-color); padding-top: 15px;">
+            <strong style="font-size: 14px; color: var(--text-main);">🍳 使用食材リスト:</strong>
+            <ul id="cartTotalMaterials" class="recipe-mats" style="margin-top: 8px;"></ul>
+          </div>
+          
+          <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button class="btn-green" style="flex: 2; font-size: 14px; padding: 12px;" onclick="checkoutCart()">💰 会計確定 (ログ記録)</button>
+            <button class="btn-secondary" style="flex: 1; font-size: 13px; padding: 12px;" onclick="clearCart()">🗑️ クリア</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 【画面2】 取引ログ -->
+    <div id="tab-logs" class="tab-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 20px;">
+        <h2 style="border:none; margin:0; padding:0;">📜 取引ログ</h2>
+        <div>
+          <button id="reportBtn" class="btn-blue" style="font-size:12px; padding:6px 10px;" onclick="sendMonthlyReport()">📊 月間レポート送信</button>
+          <button id="resetLogsBtn" class="btn-red" style="font-size:12px; padding:6px 10px; margin-left:5px;" onclick="resetLogs()">🗑️ リセット</button>
+        </div>
+      </div>
+      
+      <div class="panel" style="margin-bottom: 25px; text-align:left;">
+        <h3 style="margin-bottom: 10px; font-size:14px; color:var(--text-main);">✏️ 手動ログ追加</h3>
+        <div class="flex-row" style="gap: 15px;">
+          <div class="form-group" style="flex: 1;">
+            <label>取引タイプ</label>
+            <select id="logType">
+              <option value="🟢 販売 (売上)">🟢 販売 (売上)</option>
+              <option value="🔴 買取 (支出)">🔴 買取・仕入れ (支出)</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label>担当スタッフ</label>
+            <div id="logStaffNameDisplay" style="padding: 10px; background: #e2e8f0; border-radius: 4px; font-weight:bold; color: #475569; font-size:14px;">未設定</div>
+          </div>
+        </div>
+        <div class="flex-row" style="gap: 15px; margin-bottom: 10px;">
+          <div class="form-group" style="flex: 2; margin-bottom:0;"><label>内容</label><input type="text" id="logItemName" placeholder="例: トマト"></div>
+          <div class="form-group" style="flex: 1; margin-bottom:0;"><label>個数</label><input type="number" id="logItemQty" placeholder="例: 10"></div>
+        </div>
+        <div class="form-group"><label>合計金額 ($)</label><input type="number" id="logPrice" placeholder="例: 1000"></div>
+        <button class="btn-blue" onclick="addManualLog()">📝 記録する</button>
+      </div>
+
+      <ul id="logsList" class="mat-list" style="max-height: 500px; padding: 10px;">
+        <!-- ログ一覧が入ります -->
+      </ul>
+    </div>
+
+    <!-- 【画面3】 📅 出勤表タブ -->
+    <div id="tab-attendance" class="tab-content">
+      <h2>📅 スタッフ出勤表</h2>
+      <div id="attendanceContainer" style="overflow-x: auto; background:#f8fafc; border:1px solid var(--border-color); padding:15px; border-radius:var(--radius);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+          <button class="btn-secondary" style="width:auto; padding:6px 12px; font-size:12px;" onclick="changeAttendanceMonth(-1)">◀ 前月</button>
+          <h3 id="attendanceMonthLabel" style="margin:0; font-size:18px; color:var(--text-main);">2026年6月</h3>
+          <button class="btn-secondary" style="width:auto; padding:6px 12px; font-size:12px;" onclick="changeAttendanceMonth(1)">次月 ▶</button>
+        </div>
+        
+        <table class="attendance-table">
+          <thead>
+            <tr id="attendanceHeader"></tr>
+          </thead>
+          <tbody id="attendanceBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 【画面4】 登録済みメニュー一覧 -->
+    <div id="tab-recipes" class="tab-content">
+      <h2>📖 メニューカタログ</h2>
+      <div class="filter-bar">
+        <span>🏷️ 絞り込み：</span>
+        <select id="filterTag" onchange="renderRecipes()"><option value="">すべてのメニュー</option></select>
+      </div>
+      <div id="recipesList"></div>
+    </div>
+
+    <!-- 【画面5】 メニュー(完成品)の登録・編集 -->
+    <div id="tab-create" class="tab-content">
+      <h2 id="createTabTitle">🍔 新規メニュー登録</h2>
+      <div class="form-group"><label>メニュー名</label><input type="text" id="itemName" placeholder="例: ダブルチーズバーガー"></div>
+      <div class="form-group"><label>カテゴリー</label><div id="recipeTagsContainer" style="margin-top: 5px;"></div></div>
+      <div class="form-group"><label>画像URL</label><input type="text" id="itemImage" placeholder="https://..."></div>
+      <div class="form-group"><label>販売価格 ($)</label><input type="number" id="itemPrice" placeholder="例: 500"></div>
+      <div class="form-group">
+        <label>重量</label>
+        <div style="display: flex; gap: 10px;">
+          <input type="number" step="0.001" id="itemWeight" placeholder="例: 1.5 または 1500">
+          <select id="itemWeightUnit" style="width: 100px;"><option value="kg">kg</option><option value="g">g</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label>レシピ (構成素材)</label>
+        <div id="recipeMaterialsContainer"></div>
+        <button type="button" class="btn-secondary" style="font-size:12px; padding:6px 10px; margin-top:5px;" onclick="addRecipeMaterialRow()">+ 素材追加</button>
+      </div>
+      <button id="saveRecipeBtn" class="btn-blue" onclick="saveRecipe()">保存する</button>
+    </div>
+
+    <!-- 【画面6】 素材・タグ・システム設定 -->
+    <div id="tab-materials" class="tab-content">
+      
+      <div class="flex-row" style="margin-bottom: 30px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px;">
+        <div class="flex-col">
+          <h2>👥 スタッフ登録</h2>
+          <div class="form-group"><label>スタッフ名</label><input type="text" id="staffNameInput" placeholder="例: 山田"></div>
+          <div class="form-group"><label>役職</label><input type="text" id="staffRoleInput" placeholder="例: 店長"></div>
+          <button class="btn-blue" onclick="saveStaff()">登録</button>
+        </div>
+        <div class="flex-col"><h2>📋 スタッフ一覧</h2><ul class="mat-list" id="staffsList"></ul></div>
+      </div>
+
+      <div class="flex-row" style="margin-bottom: 30px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px;">
+        <div class="flex-col">
+          <h2>🍅 素材登録</h2>
+          <div class="form-group"><label>素材名</label><input type="text" id="matName" placeholder="例: トマト"></div>
+          <div class="form-group">
+            <label>重量 (1個あたり)</label>
+            <div style="display: flex; gap: 10px;">
+              <input type="number" step="0.001" id="matWeight" placeholder="例: 0.1 または 100">
+              <select id="matWeightUnit" style="width: 100px;"><option value="kg">kg</option><option value="g">g</option></select>
+            </div>
+          </div>
+          <button class="btn-blue" onclick="saveMaterial()">登録</button>
+        </div>
+        <div class="flex-col"><h2>📋 素材一覧</h2><ul class="mat-list" id="materialsList"></ul></div>
+      </div>
+      
+      <div class="flex-row" style="margin-bottom: 30px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px;">
+        <div class="flex-col">
+          <h2>🏷️ カテゴリー登録</h2>
+          <div class="form-group"><label>カテゴリー名</label><input type="text" id="tagName" placeholder="例: ドリンク"></div>
+          <button class="btn-blue" onclick="saveTag()">登録</button>
+        </div>
+        <div class="flex-col"><h2>📋 カテゴリー一覧</h2><ul class="mat-list" id="tagsList"></ul></div>
+      </div>
+
+      <!-- タブの並び順設定 -->
+      <div class="flex-row" style="margin-bottom: 30px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px;">
+        <div class="flex-col" style="flex: 100%;">
+          <h2>🔄 タブ順序設定</h2>
+          <ul id="tabOrderList" style="list-style:none; padding:0; margin:0; max-width:400px;"></ul>
+        </div>
+      </div>
+
+      <!-- Discord Webhook 設定 -->
+      <div class="flex-row" style="margin-bottom: 30px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px;">
+        <div class="flex-col" style="flex: 100%;">
+          <h2>🔗 Webhook 連携</h2>
+          <div class="form-group">
+            <label>全体通知 (システム更新等)</label>
+            <input type="text" id="webhookUrlInput" placeholder="https://discord.com/api/webhooks/...">
+          </div>
+          <div class="form-group">
+            <label>取引ログ通知</label>
+            <input type="text" id="webhookUrlLogsInput" placeholder="https://...">
+          </div>
+          <div class="form-group">
+            <label>月間レポート通知</label>
+            <input type="text" id="webhookUrlMonthlyInput" placeholder="https://...">
+          </div>
+          <button class="btn-blue" onclick="saveWebhook()">保存</button>
+        </div>
+      </div>
+
+      <!-- ★ システムマスターキー管理 -->
+      <div id="masterKeySection" class="flex-row" style="margin-bottom: 30px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; display: none;">
+        <div class="flex-col" style="flex: 100%;">
+          <h2>🗝️ マスターキー管理</h2>
+          <div class="panel" style="margin-bottom: 15px;">
+            <ul id="masterKeyList" class="mat-list" style="margin-bottom:10px;"></ul>
+            <div class="form-group" style="display:flex; gap:10px; margin-bottom:0;">
+              <input type="text" id="newMasterKeyInput" placeholder="新しいキー" style="flex: 1;">
+              <button class="btn-blue" style="width:auto;" onclick="addMasterKey()">追加</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 💾 データ管理セクション -->
+      <div class="flex-row">
+        <div class="flex-col" style="flex: 100%;">
+          <h2>💾 データバックアップ</h2>
+          <div class="panel" style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px;">
+              <button class="btn-blue" style="width: 100%;" onclick="exportData()">📥 ダウンロード</button>
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+              <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
+              <button class="btn-green" style="width: 100%;" onclick="document.getElementById('importFile').click()">📤 アップロード(復元)</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div> <!-- main-content 終了 -->
+</div> <!-- app-layout 終了 -->
+
+<!-- ▼ 非表示にしているタブボタンの実体 ▼ -->
+<div id="hiddenTabButtons" style="display:none;">
+  <button class="tab-btn" data-tab="tab-calc" onclick="switchTab('tab-calc')">🛒 オーダー作成</button>
+  <button class="tab-btn" data-tab="tab-logs" onclick="switchTab('tab-logs')">📜 取引ログ</button>
+  <button class="tab-btn" data-tab="tab-attendance" onclick="switchTab('tab-attendance')">📅 出勤表</button>
+  <button class="tab-btn" data-tab="tab-recipes" onclick="switchTab('tab-recipes')">📖 カタログ</button>
+  <button class="tab-btn" data-tab="tab-create" onclick="resetRecipeForm(); switchTab('tab-create')">🍔 メニュー登録</button>
+  <button class="tab-btn" data-tab="tab-materials" onclick="switchTab('tab-materials')">⚙️ 設定</button>
+</div>
+
+<script>
+  // ==========================================
+  // 【最重要】Firebaseの初期化
+  // ==========================================
+  const firebaseConfig = {
+    apiKey: "AIzaSyDHsSUZN3Vo2CQCSOZMuCrpDsPm3MC79Sk",
+    authDomain: "fivemcafe.firebaseapp.com",
+    projectId: "fivemcafe",
+    storageBucket: "fivemcafe.firebasestorage.app",
+    messagingSenderId: "369339671614",
+    appId: "1:369339671614:web:76e26fc77d3a6175479d6f"
+  };
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // ==========================================
+  // ルームIDと名前の管理
+  // ==========================================
+  let roomId = null;
+  let roomName = null;
+  let roomHistory = [];
+  let dbRef = null;
+
+  try {
+    let savedRoom = localStorage.getItem('fivem_current_room');
+    if (savedRoom) {
+      let parsed = JSON.parse(savedRoom);
+      if (typeof parsed === 'string') {
+        roomId = parsed; roomName = parsed;
+      } else if (typeof parsed === 'object' && parsed.id) {
+        roomId = parsed.id; roomName = parsed.name || parsed.id;
+      }
+    }
+  } catch (e) {
+    let rawStr = localStorage.getItem('fivem_current_room');
+    if(rawStr) { roomId = rawStr; roomName = rawStr; }
+  }
+
+  try {
+    let savedHistory = localStorage.getItem('fivem_room_history');
+    if (savedHistory) {
+      let parsed = JSON.parse(savedHistory);
+      if(Array.isArray(parsed)) {
+        roomHistory = parsed.map(item => {
+          if (!item) return null;
+          if (typeof item === 'string') return { id: item, name: item };
+          if (typeof item === 'object' && item.id) return { id: item.id, name: item.name || item.id };
+          return null;
+        }).filter(Boolean);
+      }
+    }
+  } catch (e) {
+    roomHistory = [];
+    localStorage.removeItem('fivem_room_history'); 
+  }
+
+  // ★ 権限とマスターキー
+  let isAdmin = false;
+  let adminType = null; // 'room' | 'master'
+  let adminPassword = "";
+  let masterKeys = [];
+
+  // ★ タブの並び順の管理
+  const defaultTabOrder = ['tab-calc', 'tab-logs', 'tab-attendance', 'tab-recipes', 'tab-create', 'tab-materials'];
+  let currentTabOrder = JSON.parse(localStorage.getItem('fivem_tab_order')) || [];
+  defaultTabOrder.forEach(tabId => { if(!currentTabOrder.includes(tabId)) currentTabOrder.push(tabId); });
+  currentTabOrder = currentTabOrder.filter(tabId => defaultTabOrder.includes(tabId));
+
+  function applyTabOrder() {
+    const container = document.getElementById('tabButtonContainer');
+    container.innerHTML = '';
+    currentTabOrder.forEach(tabId => {
+      const templateBtn = document.querySelector(`#hiddenTabButtons .tab-btn[data-tab="${tabId}"]`);
+      if(templateBtn) {
+        const clone = templateBtn.cloneNode(true);
+        if(tabId === currentTabOrder[0]) clone.classList.add('active');
+        container.appendChild(clone);
+      }
+    });
+    
+    applyPermissions();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    applyTabOrder();
+    if (!roomId) {
+      showRoomModal();
+    } else {
+      document.getElementById('roomModal').style.display = 'none';
+      document.getElementById('mainContainer').style.display = 'flex';
+      document.getElementById('roomBadge').style.display = 'inline-block';
+      document.getElementById('storeNameDisplay').innerText = `${roomName} (ID: ${roomId})`;
+      initFirebase();
+    }
+  });
+
+  // ==========================================
+  // モーダルと入室関連
+  // ==========================================
+  function showRoomModal() {
+    document.getElementById('roomModal').style.display = 'flex';
+    renderRoomHistory();
+    if(roomId) {
+      document.getElementById('modalCancelBtn').style.display = 'inline-block';
+      document.getElementById('roomIdInput').value = roomId;
+      document.getElementById('roomNameInput').value = roomName;
+    } else {
+      document.getElementById('modalCancelBtn').style.display = 'none';
+      if(roomHistory.length > 0) {
+        document.getElementById('roomIdInput').value = roomHistory[0].id;
+        document.getElementById('roomNameInput').value = roomHistory[0].name;
+        document.getElementById('historySelect').value = JSON.stringify(roomHistory[0]);
+      }
+    }
+  }
+
+  function renderRoomHistory() {
+    const select = document.getElementById('historySelect');
+    let html = '<option value="">-- 履歴から選択 --</option>';
+    if(roomHistory.length === 0) {
+      html = '<option value="">履歴はありません</option>';
+    } else {
+      roomHistory.forEach(h => {
+        let val = JSON.stringify(h).replace(/"/g, '&quot;');
+        html += `<option value="${val}">${h.name} (ID: ${h.id})</option>`;
+      });
+    }
+    select.innerHTML = html;
+  }
+
+  function selectHistory(val) {
+    if (!val) {
+      document.getElementById('roomIdInput').value = '';
+      document.getElementById('roomNameInput').value = '';
+      return;
+    }
+    try {
+      let parsed = JSON.parse(val);
+      document.getElementById('roomIdInput').value = parsed.id;
+      document.getElementById('roomNameInput').value = parsed.name;
+    } catch(e) {}
+  }
+
+  function joinRoom() {
+    let idInput = document.getElementById('roomIdInput').value.trim();
+    let nameInput = document.getElementById('roomNameInput').value.trim();
+
+    if (!idInput) return alert('店舗IDを入力してください！');
+    if (!/^[a-zA-Z0-9_-]+$/.test(idInput)) return alert('店舗IDは半角英数字で入力してください！');
+    if (!nameInput) nameInput = "名称未設定の店舗"; 
+    
+    // ★ Firebaseで管理者パスワードの有無をチェックし、新規なら設定させる
+    db.ref('rooms/' + idInput + '/settings/adminPassword').once('value').then(snapshot => {
+      const pwd = snapshot.val();
+      if (!pwd) {
+        const newPwd = prompt(`【新規店舗登録】\n店舗「${nameInput}」の管理者パスワードを設定してください。\n※後から変更可能です。`);
+        if (!newPwd) return; 
+        
+        db.ref('rooms/' + idInput).update({ roomName: nameInput });
+        db.ref('rooms/' + idInput + '/settings').update({ adminPassword: newPwd }).then(() => {
+          finalizeJoinRoom(idInput, nameInput);
+        });
+      } else {
+        finalizeJoinRoom(idInput, nameInput);
+      }
+    }).catch(e => alert("通信エラー: " + e.message));
+  }
+
+  function finalizeJoinRoom(id, name) {
+    let newRoom = { id: id, name: name };
+    roomHistory = roomHistory.filter(h => h.id !== id);
+    roomHistory.unshift(newRoom);
+    if(roomHistory.length > 20) roomHistory.pop();
+    localStorage.setItem('fivem_room_history', JSON.stringify(roomHistory));
+    localStorage.setItem('fivem_current_room', JSON.stringify(newRoom));
+    window.location.reload();
+  }
+
+  function deleteHistory() {
+    const select = document.getElementById('historySelect').value;
+    if(!select) return alert('削除する履歴を選んでください');
+    try {
+      let parsed = JSON.parse(select);
+      if(confirm(`履歴から「${parsed.name} (ID: ${parsed.id})」を削除しますか？`)) {
+        roomHistory = roomHistory.filter(h => h.id !== parsed.id);
+        localStorage.setItem('fivem_room_history', JSON.stringify(roomHistory));
+        renderRoomHistory();
+        if(document.getElementById('roomIdInput').value === parsed.id) {
+          document.getElementById('roomIdInput').value = ''; document.getElementById('roomNameInput').value = '';
+        }
+      }
+    } catch(e) {}
+  }
+
+  function editHistory() {
+    const select = document.getElementById('historySelect').value;
+    if(!select) return alert('名前を変更する履歴を選んでください');
+    try {
+      let parsed = JSON.parse(select);
+      const newName = prompt(`「${parsed.name} (ID: ${parsed.id})」の新しい店舗名を入力してください。`, parsed.name);
+      if(!newName || newName === parsed.name) return;
+      
+      let index = roomHistory.findIndex(h => h.id === parsed.id);
+      if(index !== -1) {
+        roomHistory[index].name = newName;
+        localStorage.setItem('fivem_room_history', JSON.stringify(roomHistory));
+        renderRoomHistory();
+        if(document.getElementById('roomIdInput').value === parsed.id) document.getElementById('roomNameInput').value = newName;
+        if (parsed.id === roomId) {
+          roomName = newName;
+          document.getElementById('storeNameDisplay').innerText = `${roomName} (ID: ${roomId})`;
+          localStorage.setItem('fivem_current_room', JSON.stringify({id: roomId, name: roomName}));
+          if(dbRef) dbRef.child('roomName').set(roomName);
+        }
+      }
+    } catch(e) {}
+  }
+
+  function changeRoom() {
+    localStorage.removeItem('fivem_current_room');
+    window.location.reload();
+  }
+
+  // ==========================================
+  // Firebaseの設定とデータ変数
+  // ==========================================
+  let staffs = []; 
+  let materials = [];
+  let recipes = [];
+  let tags = ['メイン', 'ドリンク', 'サイド', 'セット']; 
+  let logsData = [];
+  let attendanceData = {}; 
+  let webhookUrl = "";
+  let webhookUrlLogs = "";
+  let webhookUrlMonthly = ""; 
+  let cart = [];
+  let editRecipeIndex = null;
+  let isHalfPrice = false;
+
+  let myUid = localStorage.getItem('fivem_my_uid');
+  if(!myUid) {
+    myUid = 'uid_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('fivem_my_uid', myUid);
+  }
+  let myStaffName = localStorage.getItem('fivem_staff_name') || '';
+  let currentPresenceData = null;
+  let targetAttendanceDate = new Date(); 
+
+  function initFirebase() {
+    dbRef = db.ref('rooms/' + roomId);
+
+    // ★ マスターキーの取得 (全ルーム共通)
+    db.ref('global/masterKeys').on('value', snapshot => {
+      masterKeys = snapshot.val() || [];
+      renderMasterKeys();
+      applyPermissions();
+    });
+
+    dbRef.on('value', (snapshot) => {
+      document.getElementById('syncStatus').style.display = 'block';
+      const data = snapshot.val() || {};
+      
+      if(!data.roomName) dbRef.child('roomName').set(roomName || roomId);
+      else if(data.roomName !== roomName) {
+        roomName = data.roomName;
+        document.getElementById('storeNameDisplay').innerText = `${roomName} (ID: ${roomId})`;
+        localStorage.setItem('fivem_current_room', JSON.stringify({id: roomId, name: roomName}));
+        let index = roomHistory.findIndex(h => h.id === roomId);
+        if(index !== -1) {
+          roomHistory[index].name = roomName;
+          localStorage.setItem('fivem_room_history', JSON.stringify(roomHistory));
+        }
+      }
+
+      staffs = (data.staffs || []).map(s => typeof s === 'string' ? { name: s, role: '' } : s);
+      materials = data.materials || [];
+      recipes = data.recipes || [];
+      tags = data.tags || ['メイン', 'ドリンク', 'サイド', 'セット'];
+      attendanceData = data.attendance || {};
+      
+      adminPassword = (data.settings && data.settings.adminPassword) ? data.settings.adminPassword : "";
+
+      webhookUrl = (data.settings && data.settings.webhookUrl) ? data.settings.webhookUrl : "";
+      webhookUrlLogs = (data.settings && data.settings.webhookUrlLogs) ? data.settings.webhookUrlLogs : "";
+      webhookUrlMonthly = (data.settings && data.settings.webhookUrlMonthly) ? data.settings.webhookUrlMonthly : "";
+      if (document.activeElement !== document.getElementById('webhookUrlInput')) document.getElementById('webhookUrlInput').value = webhookUrl;
+      if (document.activeElement !== document.getElementById('webhookUrlLogsInput')) document.getElementById('webhookUrlLogsInput').value = webhookUrlLogs;
+      if (document.activeElement !== document.getElementById('webhookUrlMonthlyInput')) document.getElementById('webhookUrlMonthlyInput').value = webhookUrlMonthly;
+
+      if (data.logs) logsData = Object.values(data.logs).sort((a, b) => a.timestamp - b.timestamp);
+      else logsData = [];
+
+      renderStaffs(); 
+      renderTags(); updateTagDropdowns(); renderMaterials(); updateMaterialDropdowns();
+      renderRecipes(); renderCalcMenu(); renderCart(); renderLogs(); renderTabOrderSettings();
+      renderAttendance(); 
+      applyPermissions(); // ★ データの更新があった時も権限に応じたUIを維持
+    });
+
+    setupPresence();
+    if (document.getElementById('recipeMaterialsContainer').innerHTML.trim() === '') addRecipeMaterialRow();
+  }
+
+  // ==============================
+  // 🔐 権限（管理者モード）とマスターキー
+  // ==============================
+  function toggleAdmin() {
+    if (isAdmin) {
+      isAdmin = false;
+      adminType = null;
+      alert("一般スタッフモードに戻りました。");
+      applyPermissions();
+    } else {
+      if (!adminPassword && masterKeys.length === 0) {
+        const newPwd = prompt("【初回設定】\n店舗の管理者用パスワードが未設定です。\n新しく設定するパスワード（英数字など）を入力してください。");
+        if (!newPwd) return;
+        dbRef.child('settings').update({ adminPassword: newPwd });
+        adminPassword = newPwd;
+        isAdmin = true;
+        adminType = 'room';
+        alert("管理者パスワードを設定し、管理者モードになりました！");
+        applyPermissions();
+        return;
+      }
+
+      const input = prompt("管理者パスワード または マスターキー を入力してください。");
+      if (input === null) return;
+      
+      if (masterKeys.includes(input)) {
+        isAdmin = true;
+        adminType = 'master';
+        alert("🔑 マスターキーで認証されました！(全権限)");
+        applyPermissions();
+      } else if (!adminPassword && input) {
+         alert("❌ この店舗は管理者パスワードが未設定です。");
+      } else if (input === adminPassword) {
+        isAdmin = true;
+        adminType = 'room';
+        alert("管理者モードになりました！");
+        applyPermissions();
+      } else {
+        alert("❌ パスワードが違います！");
+      }
+    }
+  }
+
+  function changeAdminPassword() {
+    if (!isAdmin) return;
+    const newPwd = prompt("新しい管理者パスワードを入力してください。");
+    if (!newPwd) return;
+    dbRef.child('settings').update({ adminPassword: newPwd });
+    alert("管理者パスワードを変更しました！");
+  }
+
+  function applyPermissions() {
+    const statusDisplay = document.getElementById('adminStatusDisplay');
+    const toggleBtn = document.getElementById('adminToggleBtn');
+    const pwdBtn = document.getElementById('adminPwdChangeBtn');
+    
+    // タブのボタン要素
+    const createTabBtn = document.querySelector('.tab-btn[data-tab="tab-create"]');
+    const materialsTabBtn = document.querySelector('.tab-btn[data-tab="tab-materials"]');
+    const reportBtn = document.getElementById('reportBtn');
+    const resetLogsBtn = document.getElementById('resetLogsBtn');
+    const masterKeySec = document.getElementById('masterKeySection');
+
+    if (isAdmin) {
+      statusDisplay.innerHTML = adminType === 'master' ? '👑 マスター管理者' : '👑 管理者モード';
+      toggleBtn.innerText = '🚪 一般モードに戻る';
+      if (pwdBtn) pwdBtn.style.display = 'block';
+      
+      if(createTabBtn) createTabBtn.style.display = 'inline-block';
+      if(materialsTabBtn) materialsTabBtn.style.display = 'inline-block';
+      if(reportBtn) reportBtn.style.display = 'inline-block';
+      if(resetLogsBtn) resetLogsBtn.style.display = 'inline-block';
+
+      if(masterKeySec) {
+        if(adminType === 'master' || masterKeys.length === 0) masterKeySec.style.display = 'flex';
+        else masterKeySec.style.display = 'none';
+      }
+    } else {
+      statusDisplay.innerHTML = '👤 一般スタッフ';
+      toggleBtn.innerText = '🔑 管理者認証';
+      if (pwdBtn) pwdBtn.style.display = 'none';
+
+      if(createTabBtn) createTabBtn.style.display = 'none';
+      if(materialsTabBtn) materialsTabBtn.style.display = 'none';
+      if(reportBtn) reportBtn.style.display = 'none';
+      if(resetLogsBtn) resetLogsBtn.style.display = 'none';
+      if(masterKeySec) masterKeySec.style.display = 'none';
+      
+      // 管理者限定タブを開いていた場合は強制移動
+      const createTab = document.getElementById('tab-create');
+      const materialsTab = document.getElementById('tab-materials');
+      if ( (createTab && createTab.classList.contains('active')) || (materialsTab && materialsTab.classList.contains('active')) ) {
+        switchTab(currentTabOrder[0]); 
+      }
+    }
+    renderRecipes(); 
+  }
+
+  // ★ マスターキー管理の機能
+  function renderMasterKeys() {
+    const list = document.getElementById('masterKeyList');
+    if(!list) return;
+    list.innerHTML = '';
+    if (masterKeys.length === 0) {
+      list.innerHTML = '<li><span style="color:var(--text-muted); font-size:13px;">マスターキーはまだ登録されていません。</span></li>';
+    } else {
+      masterKeys.forEach((key, index) => {
+        const maskedKey = '*'.repeat(Math.max(key.length - 2, 0)) + key.slice(-2);
+        list.innerHTML += `<li><span>🗝️ <strong>${maskedKey}</strong></span><button class="btn-red" onclick="deleteMasterKey(${index})">削除</button></li>`;
+      });
+    }
+  }
+
+  function addMasterKey() {
+    const newKey = document.getElementById('newMasterKeyInput').value.trim();
+    if(!newKey) return alert("マスターキーを入力してください！");
+    if(masterKeys.includes(newKey)) return alert("そのキーは既に登録されています！");
+    masterKeys.push(newKey);
+    db.ref('global/masterKeys').set(masterKeys).then(() => {
+      alert("システム共通のマスターキーを追加しました！");
+      document.getElementById('newMasterKeyInput').value = '';
+    });
+  }
+
+  function deleteMasterKey(index) {
+    if(confirm("このマスターキーを削除しますか？")) {
+      masterKeys.splice(index, 1);
+      db.ref('global/masterKeys').set(masterKeys);
+    }
+  }
+
+  // ==============================
+  // 🟢 スタッフ出退勤とオンライン時間・出勤表
+  // ==============================
+  function setupPresence() {
+    if(myStaffName) {
+      document.getElementById('logStaffNameDisplay').innerText = myStaffName;
+    }
+
+    const amOnline = firebase.database().ref('.info/connected');
+    const userRef = dbRef.child('presence/' + myUid);
+    
+    amOnline.on('value', snapshot => {
+      if (snapshot.val()) {
+        userRef.onDisconnect().update({ online: false, lastSeen: firebase.database.ServerValue.TIMESTAMP });
+      }
+    });
+
+    dbRef.child('presence').on('value', snapshot => {
+      currentPresenceData = snapshot.val();
+      renderPresence();
+    });
+    
+    setInterval(renderPresence, 60000); 
+  }
+
+  function renderStaffs() {
+    const list = document.getElementById('staffsList');
+    list.innerHTML = '';
+    staffs.forEach((staff, index) => {
+      const roleStr = staff.role ? ` <span style="font-size:12px; color:var(--text-muted);">(${staff.role})</span>` : '';
+      // 管理者のみスタッフ削除可能
+      const delBtn = isAdmin ? `<button class="btn-red" onclick="deleteStaff(${index})">削除</button>` : '';
+      list.innerHTML += `<li><span>🧑‍🍳 <strong>${staff.name}</strong>${roleStr}</span>${delBtn}</li>`;
+    });
+
+    const select = document.getElementById('myStaffSelect');
+    const currentVal = myStaffName || select.value;
+    let options = '<option value="">-- スタッフを選択 --</option>';
+    staffs.forEach(staff => {
+      options += `<option value="${staff.name}" ${staff.name === currentVal ? 'selected' : ''}>${staff.name} ${staff.role? '('+staff.role+')':''}</option>`;
+    });
+    select.innerHTML = options;
+  }
+
+  function saveStaff() {
+    const name = document.getElementById('staffNameInput').value.trim();
+    const role = document.getElementById('staffRoleInput').value.trim();
+    if (!name) return alert("スタッフ名を入力してください！");
+    if (staffs.some(s => s.name === name)) return alert("そのスタッフ名はすでに登録されています！");
+    staffs.push({ name: name, role: role });
+    syncData();
+    document.getElementById('staffNameInput').value = '';
+    document.getElementById('staffRoleInput').value = '';
+  }
+
+  function deleteStaff(index) {
+    if (confirm("スタッフを削除しますか？\n(※過去のログの名前は消えません)")) {
+      staffs.splice(index, 1);
+      syncData();
+    }
+  }
+
+  function setMyName() {
+    const name = document.getElementById('myStaffSelect').value;
+    if(!name) return alert('プルダウンからスタッフ名を選んでください！\n（名前がない場合は管理者にお願いして設定タブから登録してください）');
+    
+    myStaffName = name;
+    localStorage.setItem('fivem_staff_name', myStaffName);
+    document.getElementById('logStaffNameDisplay').innerText = myStaffName;
+    
+    // オンライン状態に
+    if(dbRef) dbRef.child('presence/' + myUid).update({ name: myStaffName, online: true, loginTime: Date.now(), lastSeen: firebase.database.ServerValue.TIMESTAMP });
+    
+    // 出勤表(attendance)への書き込み
+    const d = new Date();
+    const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const day = String(d.getDate()).padStart(2,'0');
+    const timeStr = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    
+    const currentIn = attendanceData?.[ym]?.[day]?.[myStaffName]?.in;
+    if (!currentIn) {
+      if(dbRef) dbRef.child(`attendance/${ym}/${day}/${myStaffName}`).update({ in: timeStr });
+    }
+    alert("出勤しました！");
+  }
+
+  function clockOut() {
+    if(!myStaffName) return alert("まだ出勤していません！");
+    
+    if(dbRef) dbRef.child('presence/' + myUid).update({ online: false, lastSeen: firebase.database.ServerValue.TIMESTAMP });
+    
+    // 出勤表(attendance)への退勤書き込み
+    const d = new Date();
+    const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const day = String(d.getDate()).padStart(2,'0');
+    const timeStr = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    if(dbRef) dbRef.child(`attendance/${ym}/${day}/${myStaffName}`).update({ out: timeStr });
+    
+    alert("退勤しました。お疲れ様でした！");
+  }
+
+  function renderPresence() {
+    const list = document.getElementById('presenceList');
+    list.innerHTML = '';
+    if (!currentPresenceData) return;
+    
+    const users = Object.values(currentPresenceData).sort((a, b) => (b.online === a.online) ? 0 : b.online ? 1 : -1);
+    const now = Date.now();
+    
+    users.forEach(u => {
+      if(!u.name) return;
+      const statusIcon = u.online ? '🟢' : '⚪️';
+      const color = u.online ? 'var(--text-main)' : 'var(--text-muted)';
+      let timeStr = '';
+      
+      if (u.online && u.loginTime) {
+        const min = Math.floor((now - u.loginTime) / 60000);
+        timeStr = `<span style="font-size:12px; color:var(--text-muted); margin-left:auto;">(${min}分経過)</span>`;
+      }
+      
+      list.innerHTML += `
+        <li style="display:flex; align-items:center; margin-bottom: 8px; color: ${color}; font-weight: 600; font-size: 14px; border-bottom:1px solid var(--border-color); padding-bottom:6px;">
+          <span style="margin-right:8px; font-size:12px;">${statusIcon}</span> ${u.name} ${timeStr}
+        </li>`;
+    });
+  }
+
+  // ==============================
+  // 📅 出勤表タブの機能
+  // ==============================
+  function changeAttendanceMonth(diff) {
+    targetAttendanceDate.setMonth(targetAttendanceDate.getMonth() + diff);
+    renderAttendance();
+  }
+
+  function renderAttendance() {
+    if(!staffs || staffs.length === 0) {
+      document.getElementById('attendanceBody').innerHTML = '<tr><td style="border:none;">スタッフを登録してください</td></tr>';
+      return;
+    }
+
+    const ym = `${targetAttendanceDate.getFullYear()}-${String(targetAttendanceDate.getMonth()+1).padStart(2,'0')}`;
+    document.getElementById('attendanceMonthLabel').innerText = `${targetAttendanceDate.getFullYear()}年${targetAttendanceDate.getMonth()+1}月`;
+    
+    const attendanceCounts = {};
+    staffs.forEach(s => attendanceCounts[s.name] = 0);
+    const daysInMonth = new Date(targetAttendanceDate.getFullYear(), targetAttendanceDate.getMonth()+1, 0).getDate();
+
+    for(let i=1; i<=daysInMonth; i++) {
+      const dayStr = String(i).padStart(2,'0');
+      staffs.forEach(s => {
+        const att = attendanceData?.[ym]?.[dayStr]?.[s.name];
+        if (att && (att.in || att.out)) {
+          attendanceCounts[s.name]++;
+        }
+      });
+    }
+
+    const header = document.getElementById('attendanceHeader');
+    let headHtml = `<th class="day-col">日付</th>`;
+    staffs.forEach(s => {
+      headHtml += `
+        <th>
+          <div style="font-size:11px; background:#fff; color:var(--primary); border-radius:12px; display:inline-block; padding:2px 8px; margin-bottom:6px; border:1px solid var(--border-color); font-weight:700;">
+            🏢 出勤: ${attendanceCounts[s.name]}日
+          </div><br>
+          ${s.name}<br>
+          <span style="font-size:11px; font-weight:normal; color:var(--text-muted);">${s.role||''}</span>
+        </th>`;
+    });
+    header.innerHTML = headHtml;
+
+    const tbody = document.getElementById('attendanceBody');
+    let bodyHtml = '';
+    const dayNames = ['日','月','火','水','木','金','土'];
+
+    for(let i=1; i<=daysInMonth; i++) {
+      const d = new Date(targetAttendanceDate.getFullYear(), targetAttendanceDate.getMonth(), i);
+      const dayStr = String(i).padStart(2,'0');
+      const dayOfWeek = dayNames[d.getDay()];
+      
+      let rowClass = '';
+      if(d.getDay() === 0) rowClass = 'sun';
+      if(d.getDay() === 6) rowClass = 'sat';
+
+      bodyHtml += `<tr class="${rowClass}"><td class="day-col">${i}日(${dayOfWeek})</td>`;
+      
+      staffs.forEach(s => {
+        const att = attendanceData?.[ym]?.[dayStr]?.[s.name];
+        const inTime = att?.in || '';
+        const outTime = att?.out || '';
+        
+        let cellText = '<span style="color:var(--border-color); font-weight:normal;">休</span>';
+        if (inTime || outTime) {
+          cellText = `
+            <div style="display:flex; flex-direction:column; gap:2px; align-items:center;">
+              <span style="font-size:12px; color:var(--primary);">出: ${inTime||'--:--'}</span>
+              <span style="font-size:12px; color:var(--danger);">退: ${outTime||'--:--'}</span>
+            </div>
+          `;
+        }
+        bodyHtml += `<td class="att-cell" onclick="editAttendance('${ym}', '${dayStr}', '${s.name}')">${cellText}</td>`;
+      });
+      bodyHtml += `</tr>`;
+    }
+    tbody.innerHTML = bodyHtml;
+  }
+
+  function editAttendance(ym, day, staffName) {
+    if (!isAdmin) return alert("❌ 出退勤時間の手動変更は「管理者」のみ可能です。\n左パネルで【管理者として認証】を行ってください。");
+
+    const att = attendanceData?.[ym]?.[day]?.[staffName] || {in: '', out: ''};
+    const input = prompt(`${ym}-${day} 【${staffName}】 の出退勤時間を入力してください。\nフォーマット例: 10:00 - 18:00\n（全て消して空にすると記録が削除されます）`, `${att.in||''} - ${att.out||''}`.replace(/^ - $/, ''));
+    if (input === null) return; 
+    
+    if (input.trim() === '' || input.trim() === '-') {
+      dbRef.child(`attendance/${ym}/${day}/${staffName}`).remove();
+    } else {
+      const parts = input.split(/[-~～]/);
+      const inT = parts[0]?.trim() || '';
+      const outT = parts[1]?.trim() || '';
+      dbRef.child(`attendance/${ym}/${day}/${staffName}`).update({ in: inT, out: outT });
+    }
+  }
+
+  // ==============================
+  // 🔄 タブの並び替え・切り替え
+  // ==============================
+  function renderTabOrderSettings() {
+    const list = document.getElementById('tabOrderList');
+    list.innerHTML = '';
+    const tabNames = {
+      'tab-calc': '🛒 オーダー作成', 'tab-logs': '📜 取引ログ', 'tab-attendance': '📅 出勤表',
+      'tab-recipes': '📖 カタログ', 'tab-create': '🍔 メニュー登録', 'tab-materials': '⚙️ 設定'
+    };
+    currentTabOrder.forEach((tabId, index) => {
+      list.innerHTML += `
+        <li>
+          <span style="font-weight:700; color:var(--text-main); font-size:14px;">${index + 1}. ${tabNames[tabId]}</span>
+          <div style="display:flex; gap:6px;">
+            <button class="btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="moveTab(${index}, -1)" ${index===0?'disabled':''}>▲</button>
+            <button class="btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="moveTab(${index}, 1)" ${index===currentTabOrder.length-1?'disabled':''}>▼</button>
+          </div>
+        </li>
+      `;
+    });
+  }
+
+  function moveTab(index, direction) {
+    const newIndex = index + direction;
+    if(newIndex < 0 || newIndex >= currentTabOrder.length) return;
+    const temp = currentTabOrder[index];
+    currentTabOrder[index] = currentTabOrder[newIndex];
+    currentTabOrder[newIndex] = temp;
+    localStorage.setItem('fivem_tab_order', JSON.stringify(currentTabOrder));
+    applyTabOrder(); renderTabOrderSettings();
+  }
+
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('active');
+    
+    if(tabId === 'tab-logs') {
+      const list = document.getElementById('logsList');
+      list.scrollTop = list.scrollHeight;
+    }
+  }
+
+  // ==============================
+  // 🔗 Discord Webhook と 📜 ログ機能
+  // ==============================
+  function saveWebhook() {
+    const url = document.getElementById('webhookUrlInput').value.trim();
+    const urlLogs = document.getElementById('webhookUrlLogsInput').value.trim();
+    const urlMonthly = document.getElementById('webhookUrlMonthlyInput').value.trim();
+    if (dbRef) {
+      dbRef.child('settings').update({ webhookUrl: url, webhookUrlLogs: urlLogs, webhookUrlMonthly: urlMonthly }).then(() => {
+        alert("Discord Webhook を保存しました！");
+      }).catch(e => alert("エラー: " + e.message));
+    }
+  }
+
+  function sendWebhookGeneral(message) {
+    if (!webhookUrl) return;
+    fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: `${roomName || '店舗'} 管理システム`, content: message })
+    }).catch(e => console.log('Webhook error', e));
+  }
+
+  function sendWebhookLogs(message) {
+    const targetUrl = webhookUrlLogs || webhookUrl; 
+    if (!targetUrl) return;
+    fetch(targetUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: `${roomName || '店舗'} 取引ログ`, content: message })
+    }).catch(e => console.log('Webhook error', e));
+  }
+
+  function addLogEntry(type, staff, details, price) {
+    if (!dbRef) return;
+    const dateStr = new Date().toLocaleString('ja-JP', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    const logData = { type: type, staff: staff, details: details, price: price, date: dateStr, timestamp: firebase.database.ServerValue.TIMESTAMP };
+    dbRef.child('logs').push(logData);
+    
+    const cleanType = type.replace(/[^販売買取出]/g, ''); 
+    const msg = `**【${cleanType}ログ】**\n👤 担当: ${staff}\n📝 内容: ${details}\n💰 金額: $${Number(price).toLocaleString()}\n🕒 日時: ${dateStr}`;
+    sendWebhookLogs(msg);
+  }
+
+  function resetLogs() {
+    if (!dbRef) return;
+    if (confirm("本当に取引ログを全て削除しますか？\n（※この操作は取り消せません）")) {
+      dbRef.child('logs').remove();
+      alert("取引ログをリセットしました。");
+    }
+  }
+
+  function addManualLog() {
+    if (!myStaffName) return alert("左のパネルでスタッフ名を選んで『出勤』してから記録してください！");
+    const type = document.getElementById('logType').value;
+    const itemName = document.getElementById('logItemName').value.trim();
+    const itemQty = document.getElementById('logItemQty').value;
+    const price = document.getElementById('logPrice').value;
+    if (!itemName || !itemQty) return alert("商品名と個数を入力してください！");
+    
+    const details = `${itemName} × ${itemQty}個`;
+    addLogEntry(type, myStaffName, details, price || 0);
+    document.getElementById('logItemName').value = ''; document.getElementById('logItemQty').value = ''; document.getElementById('logPrice').value = '';
+  }
+
+  function sendMonthlyReport() {
+    const d = new Date();
+    const currentMonthStr = `${d.getFullYear()}年${d.getMonth()+1}月`;
+    if(!confirm(`【確認】\n${currentMonthStr}の販売記録（売上）を集計してDiscordに送信しますか？\n※販売以外のログは計算されません。`)) return;
+
+    let monthlySales = 0;
+    let itemsSold = {};
+    const currentYear = d.getFullYear();
+    const currentMonth = d.getMonth();
+
+    logsData.forEach(log => {
+      if (!log.type.includes('販売')) return;
+      const logDate = new Date(log.timestamp);
+      if (logDate.getFullYear() === currentYear && logDate.getMonth() === currentMonth) {
+        monthlySales += Number(log.price) || 0;
+        const parts = log.details.split(',');
+        parts.forEach(p => {
+          const match = p.match(/(.+?) × (\d+)/);
+          if(match) {
+            const itemName = match[1].trim();
+            const qty = Number(match[2]);
+            itemsSold[itemName] = (itemsSold[itemName] || 0) + qty;
+          }
+        });
+      }
+    });
+
+    let reportMsg = `**📊 【${currentMonthStr} 店舗売上レポート】**\n\n`;
+    reportMsg += `💰 **合計売上金額: $${monthlySales.toLocaleString()}**\n\n`;
+    reportMsg += `**📦 販売商品内訳:**\n`;
+    
+    const sortedItems = Object.entries(itemsSold).sort((a,b) => b[1] - a[1]);
+    if(sortedItems.length === 0) {
+      reportMsg += `今月の販売記録はありません。\n`;
+    } else {
+      sortedItems.forEach(([name, qty]) => {
+        reportMsg += `・${name}: ${qty}個\n`;
+      });
+    }
+
+    const targetUrl = webhookUrlMonthly || webhookUrlLogs || webhookUrl; 
+    if(!targetUrl) return alert("Discord Webhook が設定されていません！「⚙️設定」から設定してください。");
+
+    fetch(targetUrl, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: `${roomName || '店舗'} 売上レポート`, content: reportMsg })
+    }).then(() => {
+      alert("月間レポートを送信しました！");
+    }).catch(e => alert("送信エラー: " + e.message));
+  }
+
+  function checkoutCart() {
+    if (cart.length === 0) return alert("カートが空です！");
+    if (!myStaffName) return alert("左のパネルでスタッフ名を選んで『出勤』してからお会計をしてください！");
+    
+    const details = cart.map(c => `${c.recipe.name} × ${c.qty}`).join(", ");
+    let totalPrice = cart.reduce((sum, item) => sum + ((item.recipe.price || 0) * item.qty), 0);
+    if (isHalfPrice) totalPrice = Math.floor(totalPrice / 2);
+    
+    if(confirm(`【お会計の確認】\n合計金額: $${totalPrice.toLocaleString()} ${isHalfPrice ? '(半額適用済)' : ''}\n\nこの内容で販売を確定し、ログに記録しますか？`)) {
+      addLogEntry("🟢 販売 (売上)", myStaffName, details + (isHalfPrice ? ' [半額適用]' : ''), totalPrice);
+      cart = []; isHalfPrice = false;
+      document.getElementById('halfPriceBtn').innerText = '🎫 半額適用 (OFF)';
+      document.getElementById('halfPriceBtn').className = 'btn-secondary';
+      renderCart(); alert("お会計が完了し、ログに記録されました！");
+    }
+  }
+
+  function toggleHalfPrice() {
+    isHalfPrice = !isHalfPrice;
+    const btn = document.getElementById('halfPriceBtn');
+    if (isHalfPrice) {
+      btn.innerText = '🎫 半額適用：ON (50%OFF)';
+      btn.className = 'btn-blue';
+    } else {
+      btn.innerText = '🎫 半額適用 (OFF)';
+      btn.className = 'btn-secondary';
+    }
+    renderCart();
+  }
+
+  function renderLogs() {
+    const list = document.getElementById('logsList');
+    list.innerHTML = '';
+    if(logsData.length === 0) {
+      list.innerHTML = '<li style="color:var(--text-muted); justify-content:center; border:none; background:transparent;">ログはまだありません</li>';
+      return;
+    }
+    logsData.forEach(log => {
+      const isSale = log.type.includes('販売');
+      const badgeClass = isSale ? 'btn-green' : 'btn-red';
+      list.innerHTML += `
+        <li style="flex-direction: column; align-items: flex-start; gap: 8px; border-radius:var(--radius); background:white;">
+          <div style="width: 100%; display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted);">
+            <span>🕒 ${log.date}</span><span>👤 ${log.staff}</span>
+          </div>
+          <div style="font-size: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <span class="${badgeClass}" style="color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight:bold;">${log.type}</span>
+            <span style="color: var(--text-main); font-weight:600;">${log.details}</span> 
+            <strong style="margin-left: auto; color:${isSale ? 'var(--primary)' : 'var(--danger)'};">$${Number(log.price).toLocaleString()}</strong>
+          </div>
+        </li>
+      `;
+    });
+    list.scrollTop = list.scrollHeight;
+  }
+
+  // ==============================
+  // 重さ計算・データ同期・各種保存処理
+  // ==============================
+  function formatWeight(kg) {
+    if (kg === 0) return '0g';
+    if (kg < 1) return Math.round(kg * 1000) + 'g';
+    else return Number(kg.toFixed(3)) + 'kg';
+  }
+
+  function syncData() {
+    if(!dbRef) return;
+    dbRef.child('materials').set(materials);
+    dbRef.child('recipes').set(recipes);
+    dbRef.child('tags').set(tags);
+    dbRef.child('staffs').set(staffs); 
+  }
+
+  function saveTag() {
+    const name = document.getElementById('tagName').value.trim();
+    if (!name || tags.includes(name)) return;
+    tags.push(name); syncData(); document.getElementById('tagName').value = '';
+  }
+  function deleteTag(index) {
+    if (confirm("カテゴリーを削除しますか？")) { tags.splice(index, 1); syncData(); }
+  }
+
+  function saveMaterial() {
+    const name = document.getElementById('matName').value.trim();
+    let weight = parseFloat(document.getElementById('matWeight').value) || 0;
+    const unit = document.getElementById('matWeightUnit').value;
+    if (!name) return alert("食材名を入力してください！");
+    if (materials.some(m => m.name === name)) return alert("その食材はすでに登録されています！");
+    if (unit === 'g') weight = weight / 1000;
+
+    materials.push({ name: name, weight: weight }); syncData();
+    document.getElementById('matName').value = ''; document.getElementById('matWeight').value = ''; document.getElementById('matWeightUnit').value = 'kg'; 
+  }
+  function deleteMaterial(index) {
+    if (confirm("食材を削除しますか？")) { materials.splice(index, 1); syncData(); }
+  }
+
+  function resetRecipeForm() {
+    editRecipeIndex = null;
+    document.getElementById('itemName').value = ''; document.getElementById('itemImage').value = ''; 
+    document.getElementById('itemPrice').value = ''; document.getElementById('itemWeight').value = '';
+    document.getElementById('itemWeightUnit').value = 'kg'; 
+    document.getElementById('recipeMaterialsContainer').innerHTML = '';
+    document.querySelectorAll('.recipe-tag-checkbox').forEach(cb => cb.checked = false);
+    addRecipeMaterialRow();
+    
+    document.getElementById('createTabTitle').innerText = "🍔 新規メニュー登録";
+    document.getElementById('saveRecipeBtn').innerText = "登録を保存";
+  }
+
+  function saveRecipe() {
+    const name = document.getElementById('itemName').value.trim();
+    const image = document.getElementById('itemImage').value.trim();
+    let price = parseInt(document.getElementById('itemPrice').value) || 0; 
+    let weight = parseFloat(document.getElementById('itemWeight').value) || 0;
+    const unit = document.getElementById('itemWeightUnit').value;
+    if (!name) return alert("メニュー名を入力してください！");
+    if (unit === 'g') weight = weight / 1000;
+
+    const selectedTags = Array.from(document.querySelectorAll('.recipe-tag-checkbox:checked')).map(cb => cb.value);
+    const usedMaterials = [];
+    const selects = document.querySelectorAll('.recipe-mat-select');
+    const qtys = document.querySelectorAll('.recipe-mat-qty');
+
+    for (let i = 0; i < selects.length; i++) {
+      if (selects[i].value && parseFloat(qtys[i].value) > 0) usedMaterials.push({ name: selects[i].value, qty: parseFloat(qtys[i].value) });
+    }
+    const newRecipe = { name, image, price: price, weight: weight, materials: usedMaterials, tags: selectedTags };
+
+    if (editRecipeIndex !== null) { recipes[editRecipeIndex] = newRecipe; } 
+    else { 
+      recipes.push(newRecipe); 
+      sendWebhookGeneral(`🍔 新しいメニュー **「${name}」** が登録されました！\n💰 価格: $${price.toLocaleString()}\n📦 重量: ${formatWeight(weight)}`);
+    }
+    
+    syncData(); resetRecipeForm(); switchTab('tab-recipes');
+  }
+
+  function editRecipe(index) {
+    const recipe = recipes[index]; editRecipeIndex = index;
+    document.getElementById('itemName').value = recipe.name; document.getElementById('itemImage').value = recipe.image || '';
+    document.getElementById('itemPrice').value = recipe.price || 0; document.getElementById('itemWeight').value = recipe.weight;
+    document.getElementById('itemWeightUnit').value = 'kg'; 
+
+    document.querySelectorAll('.recipe-tag-checkbox').forEach(cb => { cb.checked = recipe.tags && recipe.tags.includes(cb.value); });
+
+    const container = document.getElementById('recipeMaterialsContainer'); container.innerHTML = '';
+    if (recipe.materials && recipe.materials.length > 0) { recipe.materials.forEach(m => addRecipeMaterialRow(m.name, m.qty)); } 
+    else { addRecipeMaterialRow(); }
+
+    document.getElementById('createTabTitle').innerText = "🍔 メニューの編集";
+    document.getElementById('saveRecipeBtn').innerText = "🔄 変更を上書き保存";
+    switchTab('tab-create');
+  }
+
+  function deleteRecipe(index) {
+    if (confirm("このメニューを削除しますか？")) {
+      recipes.splice(index, 1); syncData(); cart = cart.filter(item => item.recipe.name !== recipes[index]?.name);
+    }
+  }
+
+  // ==============================
+  // 💾 JSONのダウンロード・アップロード
+  // ==============================
+  function exportData() {
+    const dataToExport = { roomName: roomName, materials: materials, recipes: recipes, tags: tags, staffs: staffs, attendance: attendanceData, settings: { webhookUrl: webhookUrl, webhookUrlLogs: webhookUrlLogs, webhookUrlMonthly: webhookUrlMonthly, adminPassword: adminPassword }, logs: logsData };
+    const jsonStr = JSON.stringify(dataToExport, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url;
+    const d = new Date();
+    const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    const safeRoomName = roomId ? roomId.replace(/[\.\#\$\[\]]/g, '_') : 'shop';
+    a.download = `${safeRoomName}_data_${dateStr}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  }
+
+  function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const importedData = JSON.parse(e.target.result);
+        if (confirm("🚨 注意 🚨\n現在のルームのデータは全て消去され、アップロードしたファイルの内容で【すべて上書き】されます。\n本当に復元してよろしいですか？")) {
+          dbRef.set({
+            roomName: roomName,
+            materials: importedData.materials || [], recipes: importedData.recipes || [], 
+            tags: importedData.tags || ['メイン', 'ドリンク', 'サイド', 'セット'],
+            staffs: importedData.staffs || [],
+            attendance: importedData.attendance || {},
+            settings: importedData.settings || {}, logs: importedData.logs || {} 
+          }).then(() => { alert("✅ 復元が完了しました！"); event.target.value = ''; }).catch(error => { alert("❌ エラー: " + error.message); event.target.value = ''; });
+        } else { event.target.value = ''; }
+      } catch (error) { alert("❌ ファイル読み込み失敗"); event.target.value = ''; }
+    };
+    reader.readAsText(file);
+  }
+
+  // ==============================
+  // 描画系の関数
+  // ==============================
+  function renderTags() {
+    const list = document.getElementById('tagsList'); const checkboxContainer = document.getElementById('recipeTagsContainer');
+    list.innerHTML = ''; checkboxContainer.innerHTML = '';
+    tags.forEach((tag, index) => {
+      const delBtn = isAdmin ? `<button class="btn-red" onclick="deleteTag(${index})">削除</button>` : '';
+      list.innerHTML += `<li><span>🏷️ <strong>${tag}</strong></span>${delBtn}</li>`;
+      checkboxContainer.innerHTML += `<label class="tag-checkbox-label"><input type="checkbox" class="recipe-tag-checkbox" value="${tag}"> ${tag}</label>`;
+    });
+  }
+
+  function updateTagDropdowns() {
+    const options = '<option value="">すべてのメニュー</option>' + tags.map(t => `<option value="${t}">${t}</option>`).join('');
+    document.getElementById('filterTag').innerHTML = options; document.getElementById('calcFilterTag').innerHTML = options;
+  }
+
+  function renderMaterials() {
+    const list = document.getElementById('materialsList'); list.innerHTML = '';
+    materials.forEach((mat, index) => {
+      const delBtn = isAdmin ? `<button class="btn-red" onclick="deleteMaterial(${index})">削除</button>` : '';
+      list.innerHTML += `<li><span><strong>${mat.name}</strong> <span style="color:var(--text-muted); font-size:12px;">(重さ: ${formatWeight(mat.weight)})</span></span>${delBtn}</li>`;
+    });
+  }
+
+  function getMaterialOptionsHtml(selectedMatName = '') {
+    let html = '<option value="">-- 食材を選択 --</option>';
+    materials.forEach(mat => { html += `<option value="${mat.name}" ${mat.name === selectedMatName ? 'selected' : ''}>${mat.name} (重さ:${formatWeight(mat.weight)})</option>`; });
+    return html;
+  }
+
+  function addRecipeMaterialRow(matName = '', qty = '') {
+    const container = document.getElementById('recipeMaterialsContainer'); const row = document.createElement('div'); row.className = 'material-row';
+    row.innerHTML = `<select class="recipe-mat-select">${getMaterialOptionsHtml(matName)}</select><input type="number" class="recipe-mat-qty" placeholder="個数" min="1" value="${qty}"><button type="button" class="btn-secondary" style="padding:10px; font-size:12px;" onclick="this.parentElement.remove()">✖</button>`;
+    container.appendChild(row);
+  }
+
+  function updateMaterialDropdowns() {
+    document.querySelectorAll('.recipe-mat-select').forEach(select => { const val = select.value; select.innerHTML = getMaterialOptionsHtml(); if (val) select.value = val; });
+  }
+
+  function renderRecipes() {
+    const list = document.getElementById('recipesList'); const filterValue = document.getElementById('filterTag').value; list.innerHTML = '';
+    const targetRecipes = filterValue ? recipes.filter(r => r.tags && r.tags.includes(filterValue)) : recipes;
+
+    targetRecipes.forEach((recipe) => {
+      const realIndex = recipes.indexOf(recipe);
+      const imgUrl = recipe.image ? recipe.image : 'https://via.placeholder.com/150?text=No+Img';
+      let tagsHtml = recipe.tags ? recipe.tags.map(t => `<span class="tag-badge">${t}</span>`).join('') : '';
+      let matHtml = ''; let totalMatWeight = 0;
+
+      if(recipe.materials) {
+        recipe.materials.forEach(m => {
+          const matWeight = (materials.find(mat => mat.name === m.name) || {weight:0}).weight;
+          const subTotal = matWeight * m.qty; totalMatWeight += subTotal;
+          matHtml += `<li>${m.name} × ${m.qty}個 <span style="color:var(--text-muted); font-size:11px;">(計: ${formatWeight(subTotal)})</span></li>`;
+        });
+      }
+
+      let actionsHtml = '';
+      if (isAdmin) {
+        actionsHtml = `
+          <div class="item-actions">
+            <button class="btn-secondary" style="flex:1; font-size:12px; padding:8px;" onclick="editRecipe(${realIndex})">✏️ 編集</button>
+            <button class="btn-red" style="flex:1; font-size:12px; padding:8px;" onclick="deleteRecipe(${realIndex})">🗑️ 削除</button>
+          </div>
+        `;
+      }
+
+      list.innerHTML += `
+        <div class="item-card">
+          <img src="${imgUrl}" class="item-image" alt="画像">
+          <div class="item-details">
+            <h3 style="text-align:left;">${recipe.name}</h3><div style="margin-bottom:10px;">${tagsHtml}</div>
+            <div class="info-text">💰 <strong>販売価格:</strong> $${(recipe.price || 0).toLocaleString()}</div>
+            <div class="info-text">📦 <strong>重量:</strong> ${formatWeight(recipe.weight)}</div>
+            <div class="info-text">🍳 <strong>使用食材:</strong> (総重量: ${formatWeight(totalMatWeight)})</div>
+            <ul class="recipe-mats" style="margin-bottom:15px;">${matHtml || '<li style="color:var(--text-muted); font-size:12px;">なし</li>'}</ul>
+            ${actionsHtml}
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  function renderCalcMenu() {
+    const container = document.getElementById('calcMenuList'); const filterValue = document.getElementById('calcFilterTag').value; container.innerHTML = '';
+    const targetRecipes = filterValue ? recipes.filter(r => r.tags && r.tags.includes(filterValue)) : recipes;
+
+    targetRecipes.forEach(recipe => {
+      const realIndex = recipes.indexOf(recipe); const imgUrl = recipe.image ? recipe.image : 'https://via.placeholder.com/90?text=No+Img';
+      
+      container.innerHTML += `
+        <div class="calc-menu-btn" onclick="addToCart(${realIndex})">
+          <img src="${imgUrl}" alt="画像">
+          <div class="calc-menu-title">${recipe.name}</div>
+          <div style="color:var(--primary); font-weight:700; margin-bottom:2px; font-size:14px;">$${(recipe.price || 0).toLocaleString()}</div>
+          <div class="calc-menu-weight">${formatWeight(recipe.weight)}</div>
+        </div>
+      `;
+    });
+  }
+
+  // ==============================
+  // カート(計算)の機能
+  // ==============================
+  function addToCart(recipeIndex) {
+    const recipe = recipes[recipeIndex];
+    const existing = cart.find(item => item.recipe.name === recipe.name);
+    if (existing) { existing.qty += 1; } else { cart.push({ recipe: recipe, qty: 1 }); }
+    renderCart();
+  }
+  function changeCartQty(index, amount) {
+    cart[index].qty += amount; if (cart[index].qty <= 0) cart.splice(index, 1); renderCart();
+  }
+  function updateCartQty(index, value) {
+    let newQty = parseInt(value, 10); if (isNaN(newQty) || newQty <= 0) { cart.splice(index, 1); } else { cart[index].qty = newQty; } renderCart();
+  }
+  function removeCartItem(index) { cart.splice(index, 1); renderCart(); }
+  function clearCart() { if(cart.length > 0 && confirm("オーダーをクリアしますか？")) { cart = []; isHalfPrice=false; renderCart(); } }
+
+  function renderCart() {
+    const cartList = document.getElementById('cartList');
+    const totalWeightEl = document.getElementById('cartTotalWeight');
+    const totalPriceEl = document.getElementById('cartTotalPrice');
+    const totalMaterialsEl = document.getElementById('cartTotalMaterials');
+    const halfBtn = document.getElementById('halfPriceBtn');
+
+    if (isHalfPrice) {
+      halfBtn.innerText = '🎫 半額適用：ON (50%OFF)'; halfBtn.className = 'btn-blue';
+    } else {
+      halfBtn.innerText = '🎫 半額適用 (OFF)'; halfBtn.className = 'btn-secondary';
+    }
+
+    cartList.innerHTML = '';
+    let totalWeight = 0; let totalPrice = 0; let materialTotals = {};
+
+    if (cart.length === 0) {
+      cartList.innerHTML = '<li style="color:var(--text-muted); text-align:center; font-weight:normal; border:none; box-shadow:none; background:transparent;">左のメニューをタップして追加</li>';
+      totalWeightEl.innerText = '0g'; totalPriceEl.innerText = '$0'; totalMaterialsEl.innerHTML = '<li style="color:var(--text-muted); font-weight:normal; font-size:13px;">なし</li>'; return;
+    }
+
+    cart.forEach((item, index) => {
+      const itemTotalWeight = (item.recipe.weight * item.qty); const itemTotalPrice = (item.recipe.price || 0) * item.qty; 
+      totalWeight += itemTotalWeight; totalPrice += itemTotalPrice; 
+      
+      cartList.innerHTML += `
+        <li>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div class="cart-list-title">${item.recipe.name}</div>
+            <button class="btn-secondary" style="padding: 4px 8px; font-size:11px; margin-left: 10px;" onclick="removeCartItem(${index})">✖</button>
+          </div>
+          <div class="cart-controls">
+            <span style="font-size: 13px; color:var(--text-muted); font-weight:600;">$${itemTotalPrice.toLocaleString()} / ${formatWeight(itemTotalWeight)}</span>
+            <div style="display: flex; align-items: center;">
+              <button class="btn-secondary cart-qty-btn" onclick="changeCartQty(${index}, -1)">-</button>
+              <input type="number" class="cart-qty-input" value="${item.qty}" min="1" onchange="updateCartQty(${index}, this.value)">
+              <button class="btn-blue cart-qty-btn" onclick="changeCartQty(${index}, 1)">+</button>
+            </div>
+          </div>
+        </li>
+      `;
+
+      if(item.recipe.materials) {
+        item.recipe.materials.forEach(m => {
+          if (!materialTotals[m.name]) {
+            const mWeight = (materials.find(mat => mat.name === m.name) || {weight:0}).weight;
+            materialTotals[m.name] = { qty: 0, weight: mWeight };
+          }
+          materialTotals[m.name].qty += (m.qty * item.qty);
+        });
+      }
+    });
+
+    totalWeightEl.innerText = formatWeight(totalWeight);
+    
+    // ★ 合計金額の半額表示対応
+    if (isHalfPrice) {
+      const halfPrice = Math.floor(totalPrice / 2);
+      totalPriceEl.innerHTML = `<span style="text-decoration: line-through; font-size:16px; color:var(--text-muted);">$${totalPrice.toLocaleString()}</span><br><span style="color:var(--danger); font-size:24px;">$${halfPrice.toLocaleString()}</span>`;
+    } else {
+      totalPriceEl.innerText = '$' + totalPrice.toLocaleString(); 
+    }
+
+    totalMaterialsEl.innerHTML = '';
+    let totalMatWeight = 0;
+    
+    for (let mName in materialTotals) {
+      const data = materialTotals[mName]; const subTotalWeight = data.qty * data.weight; totalMatWeight += subTotalWeight;
+      totalMaterialsEl.innerHTML += `<li style="margin-bottom: 4px; font-size: 13px;">${mName} × <strong style="font-size:15px; color:var(--text-main);">${data.qty}</strong> <span style="color:var(--text-muted); font-size:12px; margin-left:8px;">(${formatWeight(subTotalWeight)})</span></li>`;
+    }
+    totalMaterialsEl.innerHTML += `<li style="margin-top: 10px; border-top: 1px dashed var(--border-color); padding-top: 10px; list-style: none; margin-left: -20px; color:var(--primary); font-weight:700; font-size:14px;">⚖️ 総重量: ${formatWeight(totalMatWeight)}</li>`;
+  }
+</script>
+
+</body>
+</html>
